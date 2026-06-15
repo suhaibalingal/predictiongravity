@@ -942,3 +942,14 @@ h1 {
   justify-content: center;
   border: 1px solid var(--glass-border);
 }
+
+/* Custom styling for select option elements */
+#cfg-match-preset option {
+  background-color: #0d121f;
+  color: #fff;
+  padding: 0.5rem;
+}
+#cfg-match-preset:focus {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 3px var(--accent-gold-glow);
+}

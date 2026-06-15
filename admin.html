@@ -62,6 +62,21 @@
       </div>
 
       <form id="match-config-form" onsubmit="saveMatchConfig(event)">
+        <!-- Match Preset Dropdown -->
+        <div class="form-group">
+          <label class="form-label" for="cfg-match-preset">
+            <i class="fa-solid fa-wand-magic-sparkles text-accent-gold"></i> Load World Cup Fixture Preset
+          </label>
+          <div class="input-wrapper">
+            <span class="input-icon"><i class="fa-solid fa-list-ul"></i></span>
+            <select class="form-input" id="cfg-match-preset" onchange="loadFixturePreset()" style="padding-left: 2.75rem; cursor: pointer; background: rgba(0,0,0,0.45); border: 1px solid var(--glass-border); color: #fff;">
+              <option value="">-- Choose an upcoming match --</option>
+              <!-- Dynamically populated from admin.js -->
+            </select>
+          </div>
+        </div>
+
+        <div style="border-top: 1px dashed rgba(255,255,255,0.05); margin: 1.25rem 0;"></div>
         <!-- Team A Details -->
         <div class="form-group">
           <label class="form-label">Team A (Home)</label>
@@ -338,6 +353,13 @@
 
     window.logOutAdmin = () => {
       window.dispatchEvent(new CustomEvent('admin-logout'));
+    };
+
+    window.loadFixturePreset = () => {
+      const selectVal = document.getElementById('cfg-match-preset').value;
+      if (selectVal !== "") {
+        window.dispatchEvent(new CustomEvent('admin-load-preset', { detail: parseInt(selectVal) }));
+      }
     };
 
     window.saveMatchConfig = (e) => {

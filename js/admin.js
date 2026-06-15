@@ -14,6 +14,22 @@ import {
 // Global Admin Passcode - Customizable
 const ADMIN_PASSCODE = "2026";
 
+// FIFA World Cup 2026 Fixture Presets (localized times in IST)
+const FIXTURE_PRESETS = [
+  { teamA: "Spain", teamAFlag: "🇪🇸", teamB: "Cabo Verde", teamBFlag: "🇨🇻", kickoff: "2026-06-16T03:30" },
+  { teamA: "Belgium", teamAFlag: "🇧🇪", teamB: "Egypt", teamBFlag: "🇪🇬", kickoff: "2026-06-16T00:30" },
+  { teamA: "Saudi Arabia", teamAFlag: "🇸🇦", teamB: "Uruguay", teamBFlag: "🇺🇾", kickoff: "2026-06-16T03:30" },
+  { teamA: "Iran", teamAFlag: "🇮🇷", teamB: "New Zealand", teamBFlag: "🇳🇿", kickoff: "2026-06-16T06:30" },
+  { teamA: "France", teamAFlag: "🇫🇷", teamB: "Senegal", teamBFlag: "🇸🇳", kickoff: "2026-06-17T00:30" },
+  { teamA: "Iraq", teamAFlag: "🇮🇶", teamB: "Norway", teamBFlag: "🇳🇴", kickoff: "2026-06-17T03:30" },
+  { teamA: "Argentina", teamAFlag: "🇦🇷", teamB: "Algeria", teamBFlag: "🇩🇿", kickoff: "2026-06-17T06:30" },
+  { teamA: "Austria", teamAFlag: "🇦🇹", teamB: "Jordan", teamBFlag: "🇯🇴", kickoff: "2026-06-17T09:30" },
+  { teamA: "Portugal", teamAFlag: "🇵🇹", teamB: "DRC", teamBFlag: "🇨🇩", kickoff: "2026-06-17T22:30" },
+  { teamA: "England", teamAFlag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", teamB: "Croatia", teamBFlag: "🇭🇷", kickoff: "2026-06-18T01:30" },
+  { teamA: "Ghana", teamAFlag: "🇬🇭", teamB: "Panama", teamBFlag: "🇵🇦", kickoff: "2026-06-18T04:30" },
+  { teamA: "Uzbekistan", teamAFlag: "🇺🇿", teamB: "Colombia", teamBFlag: "🇨🇴", kickoff: "2026-06-18T06:30" }
+];
+
 // DOM Sections
 const elPasscodeScreen = document.getElementById("passcode-screen");
 const elDashboard = document.getElementById("admin-dashboard");
@@ -78,7 +94,35 @@ window.addEventListener("DOMContentLoaded", () => {
   // Handle kickoff input to calculate deadline (5 minutes before)
   elKickoff.addEventListener("input", updateCalculatedDeadline);
 
+  // Populate match presets dropdown
+  const elPresetSelect = document.getElementById("cfg-match-preset");
+  if (elPresetSelect) {
+    FIXTURE_PRESETS.forEach((fix, idx) => {
+      const opt = document.createElement("option");
+      opt.value = idx;
+      opt.textContent = `${fix.teamAFlag} ${fix.teamA} vs ${fix.teamB} ${fix.teamBFlag}`;
+      elPresetSelect.appendChild(opt);
+    });
+  }
+
   checkAuthentication();
+});
+
+// Event listener to load selected preset
+window.addEventListener("admin-load-preset", (e) => {
+  const idx = e.detail;
+  const fix = FIXTURE_PRESETS[idx];
+  if (fix) {
+    elTeamA.value = fix.teamA;
+    elTeamB.value = fix.teamB;
+    elTeamAFlag.value = fix.teamAFlag;
+    elTeamBFlag.value = fix.teamBFlag;
+    elTeamAFlagIndicator.textContent = fix.teamAFlag;
+    elTeamBFlagIndicator.textContent = fix.teamBFlag;
+    elKickoff.value = fix.kickoff;
+    updateCalculatedDeadline();
+    showToast(`Loaded preset: ${fix.teamA} vs ${fix.teamB}!`, "info");
+  }
 });
 
 function updateCalculatedDeadline() {
