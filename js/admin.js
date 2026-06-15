@@ -237,7 +237,7 @@ async function loadMatchConfig() {
         elResScoreB.value = "";
       }
 
-      currentMatchId = `${activeMatch.teamA.replace(/\s+/g, '')}_vs_${activeMatch.teamB.replace(/\s+/g, '')}`;
+      currentMatchId = activeMatch.matchId || 'active_match';
       
       // Listen to predictions real-time
       listenToPredictions();
@@ -249,19 +249,28 @@ async function loadMatchConfig() {
 }
 
 window.addEventListener("admin-save-match", async (e) => {
-  const { teamA, teamB, teamAFlag, teamBFlag, kickoff } = e.detail;
+  const { teamA, teamB, teamAFlag, teamBFlag, kickoff, isNewMatch } = e.detail;
 
   btnSaveCfg.disabled = true;
   btnSaveCfg.innerHTML = '<span>Saving...</span> <i class="fa-solid fa-circle-notch fa-spin"></i>';
 
   try {
-    const newMatchId = `${teamA.replace(/\s+/g, '')}_vs_${teamB.replace(/\s+/g, '')}`;
-    
-    // Check if team names have changed (meaning it's a new match)
-    // If it's a new match, reset the results to empty/null.
+    // Determine the matchId. If it's a new match, generate a unique ID.
+    // If not, reuse the existing matchId (or default to 'active_match').
+    let matchId = activeMatch && activeMatch.matchId ? activeMatch.matchId : 'active_match';
     let scoreA = null;
     let scoreB = null;
-    if (activeMatch && currentMatchId === newMatchId) {
+    let isReset = isNewMatch;
+    
+    if (!activeMatch) {
+      isReset = true; // First run ever
+    }
+
+    if (isReset) {
+      matchId = `match_${Date.now()}`;
+      scoreA = null;
+      scoreB = null;
+    } else {
       scoreA = activeMatch.resultTeamA !== undefined ? activeMatch.resultTeamA : null;
       scoreB = activeMatch.resultTeamB !== undefined ? activeMatch.resultTeamB : null;
     }
@@ -272,6 +281,7 @@ window.addEventListener("admin-save-match", async (e) => {
 
     const matchDocRef = doc(db, "settings", "match");
     const payload = {
+      matchId,
       teamA,
       teamB,
       teamAFlag,
@@ -280,10 +290,14 @@ window.addEventListener("admin-save-match", async (e) => {
       deadline,
       resultTeamA: scoreA,
       resultTeamB: scoreB,
-      createdAt: activeMatch && currentMatchId === newMatchId && activeMatch.createdAt ? activeMatch.createdAt : new Date().toISOString()
+      createdAt: activeMatch && !isReset && activeMatch.createdAt ? activeMatch.createdAt : new Date().toISOString()
     };
 
     await setDoc(matchDocRef, payload);
+    
+    // Reset checkbox
+    const chkNewMatch = document.getElementById('cfg-new-match');
+    if (chkNewMatch) chkNewMatch.checked = false;
     
     showToast("Match details published successfully!", "success");
     
@@ -393,7 +407,7 @@ function renderPredictionsTable() {
                       pred.scoreB === activeMatch.resultTeamB;
 
     const timeStr = pred.resolvedDate.toLocaleString();
-    const cleanPred = `${pred.scoreA} - ${pred.scoreB}`;
+    const cleanPred = `${activeMatch ? activeMatch.teamAFlag : ''} ${pred.scoreA} - ${pred.scoreB} ${activeMatch ? activeMatch.teamBFlag : ''}`;
 
     html += `
       <tr>

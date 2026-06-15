@@ -136,6 +136,14 @@
           </div>
         </div>
 
+        <!-- New Match Checkbox -->
+        <div class="switch-group" style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; justify-content: flex-start;">
+          <input type="checkbox" id="cfg-new-match" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-cyan);">
+          <label class="form-label" style="margin-bottom: 0; cursor: pointer; font-size: 0.85rem;" for="cfg-new-match">
+            <i class="fa-solid fa-rotate text-accent-cyan"></i> Start as New Match (resets predictions list)
+          </label>
+        </div>
+
         <button type="submit" class="submit-btn" id="btn-save-cfg">
           <span>Publish Match Details</span>
           <i class="fa-solid fa-cloud-arrow-up"></i>
@@ -370,7 +378,8 @@
           teamB: document.getElementById('cfg-team-b').value.trim(),
           teamAFlag: document.getElementById('cfg-team-a-flag').value.trim(),
           teamBFlag: document.getElementById('cfg-team-b-flag').value.trim(),
-          kickoff: document.getElementById('cfg-kickoff').value
+          kickoff: document.getElementById('cfg-kickoff').value,
+          isNewMatch: document.getElementById('cfg-new-match').checked
         }
       }));
     };

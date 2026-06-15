@@ -105,8 +105,8 @@ async function loadActiveMatch() {
 
     activeMatch = matchSnap.data();
     
-    // Generate unique match ID based on teams & date to check predictions against
-    currentMatchId = `${activeMatch.teamA.replace(/\s+/g, '')}_vs_${activeMatch.teamB.replace(/\s+/g, '')}`;
+    // Get the unique match ID from configuration settings
+    currentMatchId = activeMatch.matchId || 'active_match';
     
     // Populate match UI
     elTeamAName.textContent = activeMatch.teamA;
