@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIFA World Cup 2026 Admin Dashboard</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <h1>Admin Dashboard</h1>
+  <div class="subtitle">Match & Winners Control Panel</div>
+
+  <!-- Setup Warning Banner (shown if firebase is not configured) -->
+  <div id="config-warning" class="config-banner" style="display: none;">
+    <h4><i class="fa-solid fa-triangle-exclamation"></i> Firebase Setup Required</h4>
+    <p>Please configure your Firebase credentials in <code>js/firebase-config.js</code> to enable the admin dashboard functions.</p>
+  </div>
+
+  <!-- PASSCODE ACCESS PANEL -->
+  <div class="glass-card passcode-screen" id="passcode-screen">
+    <div class="passcode-icon">
+      <i class="fa-solid fa-shield-halved"></i>
+    </div>
+    <h2>Admin Authorization</h2>
+    <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem; max-width: 320px;">
+      Enter the admin passcode to access the match configuration and winner reports.
+    </p>
+    <form id="passcode-form" onsubmit="verifyAdminPasscode(event)" style="width: 100%;">
+      <div class="form-group">
+        <div class="input-wrapper">
+          <span class="input-icon"><i class="fa-solid fa-key"></i></span>
+          <input class="form-input" type="password" id="admin-passcode" placeholder="Enter Admin Passcode" required>
+        </div>
+      </div>
+      <button type="submit" class="submit-btn">
+        <span>Verify Code</span>
+        <i class="fa-solid fa-right-to-bracket"></i>
+      </button>
+    </form>
+    <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+      Default passcode is <code>2026</code> (Customizable in admin.js)
+    </p>
+  </div>
+
+  <!-- MAIN ADMIN DASHBOARD -->
+  <div class="admin-grid" id="admin-dashboard" style="display: none;">
+    
+    <!-- LEFT PANEL: CONFIGURATION -->
+    <div class="glass-card admin-panel-card">
+      <div class="admin-card-header">
+        <h3 class="admin-card-title"><i class="fa-solid fa-sliders text-accent-cyan"></i> Match Setup</h3>
+        <button class="reset-btn" onclick="logOutAdmin()">Logout</button>
+      </div>
+
+      <form id="match-config-form" onsubmit="saveMatchConfig(event)">
+        <!-- Team A Details -->
+        <div class="form-group">
+          <label class="form-label">Team A (Home)</label>
+          <input class="form-input" style="padding-left: 1rem;" type="text" id="cfg-team-a" placeholder="e.g. Argentina" required>
+          <div class="flag-picker-row mt-4">
+            <div class="flag-preview-indicator" id="cfg-team-a-flag-indicator">🇦🇷</div>
+            <input class="form-input" style="padding-left: 1rem;" type="text" id="cfg-team-a-flag" placeholder="Flag Emoji (e.g. 🇦🇷)" required value="🇦🇷">
+          </div>
+          <!-- Flag Quick Select -->
+          <div class="flag-preset-container" data-target="cfg-team-a">
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('A', '🇦🇷')">🇦🇷</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('A', '🇧🇷')">🇧🇷</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('A', '🇫🇷')">🇫🇷</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('A', '🇩🇪')">🇩🇪</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('A', '🏴󠁧󠁢󠁥󠁮󠁧󠁿')">🏴󠁧󠁢󠁥󠁮󠁧󠁿</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('A', '🇪🇸')">🇪🇸</button>
+          </div>
+        </div>
+
+        <div style="border-top: 1px dashed rgba(255,255,255,0.05); margin: 1.5rem 0;"></div>
+
+        <!-- Team B Details -->
+        <div class="form-group">
+          <label class="form-label">Team B (Away)</label>
+          <input class="form-input" style="padding-left: 1rem;" type="text" id="cfg-team-b" placeholder="e.g. France" required>
+          <div class="flag-picker-row mt-4">
+            <div class="flag-preview-indicator" id="cfg-team-b-flag-indicator">🇫🇷</div>
+            <input class="form-input" style="padding-left: 1rem;" type="text" id="cfg-team-b-flag" placeholder="Flag Emoji (e.g. 🇫🇷)" required value="🇫🇷">
+          </div>
+          <!-- Flag Quick Select -->
+          <div class="flag-preset-container" data-target="cfg-team-b">
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('B', '🇫🇷')">🇫🇷</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('B', '🏴󠁧󠁢󠁥󠁮󠁧󠁿')">🏴󠁧󠁢󠁥󠁮󠁧󠁿</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('B', '🇪🇸')">🇪🇸</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('B', '🇩🇪')">🇩🇪</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('B', '🇲🇽')">🇲🇽</button>
+            <button type="button" class="flag-preset-btn" onclick="selectFlag('B', '🇺🇸')">🇺🇸</button>
+          </div>
+        </div>
+
+        <div style="border-top: 1px dashed rgba(255,255,255,0.05); margin: 1.5rem 0;"></div>
+
+        <!-- Kickoff and Deadline settings -->
+        <div class="form-group">
+          <label class="form-label" for="cfg-kickoff">Match Kickoff Time (IST)</label>
+          <div class="input-wrapper">
+            <span class="input-icon"><i class="fa-solid fa-play"></i></span>
+            <input class="form-input" type="datetime-local" id="cfg-kickoff" required>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top: -0.5rem;">
+          <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted);">Calculated Submission Deadline (5m before Kickoff)</label>
+          <div class="input-wrapper">
+            <p style="color: var(--accent-cyan); font-weight: 700; font-size: 0.95rem; margin-top: 0.25rem;" id="cfg-deadline-display">
+              Select kickoff time to calculate...
+            </p>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="btn-save-cfg">
+          <span>Publish Match Details</span>
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </button>
+      </form>
+
+      <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 2rem 0;"></div>
+
+      <!-- MATCH RESULT INPUT -->
+      <div class="admin-card-header" style="border: none; margin-bottom: 0.75rem;">
+        <h3 class="admin-card-title"><i class="fa-solid fa-trophy text-accent-gold"></i> Match Results</h3>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">
+        Enter correct scores once the match is completed to automatically compute competition winners.
+      </p>
+
+      <form id="result-form" onsubmit="saveMatchResults(event)">
+        <div class="match-container" style="margin: 0.5rem 0 1.5rem 0;">
+          <div class="team-container" style="flex: 1.2;">
+            <div class="team-name" id="res-team-a-label" style="min-height: auto; margin-bottom: 0.5rem; text-align: center;">Team A</div>
+            <input class="form-input text-center" style="padding-left: 1rem; font-size: 1.5rem; font-weight: bold;" type="number" id="res-score-a" min="0" placeholder="Score">
+          </div>
+          <div class="vs-divider" style="padding-top: 1.5rem;">:</div>
+          <div class="team-container" style="flex: 1.2;">
+            <div class="team-name" id="res-team-b-label" style="min-height: auto; margin-bottom: 0.5rem; text-align: center;">Team B</div>
+            <input class="form-input text-center" style="padding-left: 1rem; font-size: 1.5rem; font-weight: bold;" type="number" id="res-score-b" min="0" placeholder="Score">
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn" style="background: linear-gradient(135deg, var(--accent-gold), #d97706); color: #000; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);" id="btn-save-result">
+          <span>Calculate Winners</span>
+          <i class="fa-solid fa-calculator"></i>
+        </button>
+      </form>
+
+    </div>
+
+    <!-- RIGHT PANEL: SUBMISSIONS AND REPORTS -->
+    <div class="glass-card admin-panel-card" style="max-width: 100%;">
+      
+      <div class="tab-container">
+        <button class="tab-btn active" id="tab-submissions-btn" onclick="switchTab('submissions')">
+          <i class="fa-solid fa-list-check"></i> Submissions
+        </button>
+        <button class="tab-btn" id="tab-winners-btn" onclick="switchTab('winners')">
+          <i class="fa-solid fa-medal"></i> Winners Report
+        </button>
+      </div>
+
+      <!-- SUBMISSIONS TAB -->
+      <div id="tab-submissions">
+        <div class="admin-card-header" style="border: none; margin-bottom: 0; padding-bottom: 0;">
+          <h3 class="admin-card-title">Live Predictions</h3>
+          <span class="badge-count" id="predictions-count">0 submissions</span>
+        </div>
+
+        <div class="search-bar">
+          <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <input class="search-input" type="text" id="search-submissions" placeholder="Search by Student Name or Phone..." oninput="filterPredictionsTable()">
+        </div>
+
+        <div class="sub-table-container">
+          <table class="sub-table" id="predictions-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Phone Number</th>
+                <th>Prediction</th>
+                <th>Submitted At</th>
+              </tr>
+            </thead>
+            <tbody id="predictions-tbody">
+              <!-- Dynamically populated -->
+              <tr>
+                <td colspan="4" class="empty-state">No submissions yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- WINNERS TAB -->
+      <div id="tab-winners" style="display: none;">
+        <div class="admin-card-header" style="border: none; margin-bottom: 0.5rem; padding-bottom: 0;">
+          <h3 class="admin-card-title">Winner Leaderboard</h3>
+          <span class="badge-count" id="winners-count">0 winners</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1.5rem;">
+          Winners are computed based on the exact correct score, sorted by submission timestamp (first to predict wins).
+        </p>
+
+        <!-- Winners Podium Section -->
+        <div id="winners-podium" class="podium-container" style="display: none;">
+          <!-- 2nd place -->
+          <div class="podium-step podium-step-2">
+            <div class="podium-winner-card">
+              <div class="podium-avatar">2</div>
+              <div class="podium-w-name" id="podium-2-name">Silver Winner</div>
+              <div class="podium-w-pred" id="podium-2-pred">0 - 0</div>
+              <div class="podium-w-time" id="podium-2-time">Time</div>
+            </div>
+            <div class="podium-pillar">2nd</div>
+          </div>
+
+          <!-- 1st place -->
+          <div class="podium-step podium-step-1">
+            <div class="podium-crown"><i class="fa-solid fa-crown text-accent-gold" style="color: var(--accent-gold);"></i></div>
+            <div class="podium-winner-card">
+              <div class="podium-avatar">1</div>
+              <div class="podium-w-name" id="podium-1-name">Gold Winner</div>
+              <div class="podium-w-pred" id="podium-1-pred">0 - 0</div>
+              <div class="podium-w-time" id="podium-1-time">Time</div>
+            </div>
+            <div class="podium-pillar">1st</div>
+          </div>
+
+          <!-- 3rd place -->
+          <div class="podium-step podium-step-3">
+            <div class="podium-winner-card">
+              <div class="podium-avatar">3</div>
+              <div class="podium-w-name" id="podium-3-name">Bronze Winner</div>
+              <div class="podium-w-pred" id="podium-3-pred">0 - 0</div>
+              <div class="podium-w-time" id="podium-3-time">Time</div>
+            </div>
+            <div class="podium-pillar">3rd</div>
+          </div>
+        </div>
+
+        <div id="no-winners-state" class="empty-state">
+          Please set the correct score in the match setup panel to calculate winners.
+        </div>
+
+        <!-- Full winners table list -->
+        <div id="winners-list-container" style="display: none;">
+          <h4 style="margin: 1.5rem 0 0.5rem 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">
+            All Correct Predictors
+          </h4>
+          <div class="sub-table-container">
+            <table class="sub-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Student</th>
+                  <th>Phone Number</th>
+                  <th>Submitted At</th>
+                </tr>
+              </thead>
+              <tbody id="winners-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast">
+    <span id="toast-icon" class="toast-icon"></span>
+    <span id="toast-message"></span>
+  </div>
+
+  <!-- Confetti library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Admin logic module script -->
+  <script type="module" src="js/admin.js"></script>
+
+  <!-- UI Event Hooks mapping back to modules -->
+  <script>
+    // Tab switching wrapper
+    window.switchTab = (tabName) => {
+      const subTab = document.getElementById('tab-submissions');
+      const winTab = document.getElementById('tab-winners');
+      const subBtn = document.getElementById('tab-submissions-btn');
+      const winBtn = document.getElementById('tab-winners-btn');
+      
+      if (tabName === 'submissions') {
+        subTab.style.display = 'block';
+        winTab.style.display = 'none';
+        subBtn.classList.add('active');
+        winBtn.classList.remove('active');
+      } else {
+        subTab.style.display = 'none';
+        winTab.style.display = 'block';
+        subBtn.classList.remove('active');
+        winBtn.classList.add('active');
+        // Dispatch custom event to trigger winner rendering
+        window.dispatchEvent(new CustomEvent('admin-tab-winners-active'));
+      }
+    };
+
+    // Helper to select preset flags
+    window.selectFlag = (team, flag) => {
+      const inputId = `cfg-team-${team.toLowerCase()}-flag`;
+      const inputEl = document.getElementById(inputId);
+      const indicatorEl = document.getElementById(`${inputId}-indicator`);
+      
+      inputEl.value = flag;
+      indicatorEl.textContent = flag;
+      
+      // Dispatch input event to trigger admin.js listeners
+      inputEl.dispatchEvent(new Event('input'));
+    };
+
+    window.verifyAdminPasscode = (e) => {
+      e.preventDefault();
+      const code = document.getElementById('admin-passcode').value;
+      window.dispatchEvent(new CustomEvent('admin-verify-passcode', { detail: code }));
+    };
+
+    window.logOutAdmin = () => {
+      window.dispatchEvent(new CustomEvent('admin-logout'));
+    };
+
+    window.saveMatchConfig = (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('admin-save-match', {
+        detail: {
+          teamA: document.getElementById('cfg-team-a').value.trim(),
+          teamB: document.getElementById('cfg-team-b').value.trim(),
+          teamAFlag: document.getElementById('cfg-team-a-flag').value.trim(),
+          teamBFlag: document.getElementById('cfg-team-b-flag').value.trim(),
+          kickoff: document.getElementById('cfg-kickoff').value
+        }
+      }));
+    };
+
+    window.saveMatchResults = (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('admin-save-results', {
+        detail: {
+          scoreA: document.getElementById('res-score-a').value !== '' ? parseInt(document.getElementById('res-score-a').value) : null,
+          scoreB: document.getElementById('res-score-b').value !== '' ? parseInt(document.getElementById('res-score-b').value) : null
+        }
+      }));
+    };
+
+    window.filterPredictionsTable = () => {
+      const query = document.getElementById('search-submissions').value.toLowerCase();
+      window.dispatchEvent(new CustomEvent('admin-filter-submissions', { detail: query }));
+    };
+  </script>
+</body>
+</html>

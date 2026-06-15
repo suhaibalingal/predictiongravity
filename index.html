@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIFA World Cup 2026 Prediction Portal</title>
+  <meta name="description" content="Predict match results and win the school prediction competition.">
+  
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <h1>World Cup 2026</h1>
+  <div class="subtitle">Prediction Competition</div>
+
+  <!-- Setup Warning Banner (shown if firebase is not configured) -->
+  <div id="config-warning" class="config-banner" style="display: none;">
+    <h4><i class="fa-solid fa-triangle-exclamation"></i> Firebase Setup Required</h4>
+    <p>Please open <code>js/firebase-config.js</code> and insert your Firebase Web SDK credentials to activate the application.</p>
+  </div>
+
+  <main class="glass-card" id="app-card">
+    
+    <!-- LOADING STATE -->
+    <div id="loading-state" class="text-center" style="padding: 3rem 0;">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2.5rem; color: var(--accent-cyan);"></i>
+      <p class="mt-4" style="color: var(--text-secondary);">Loading match details...</p>
+    </div>
+
+    <!-- PENDING/ACTIVE PREDICTION STATE -->
+    <div id="active-state" style="display: none;">
+      
+      <!-- Match Card Display -->
+      <div class="match-container">
+        <!-- Team A -->
+        <div class="team-container">
+          <div class="team-logo-wrapper" id="team-a-logo">⚽</div>
+          <div class="team-name" id="team-a-name">Team A</div>
+          <div class="score-selector">
+            <button class="score-btn" id="team-a-minus" onclick="adjustScore('A', -1)"><i class="fa-solid fa-minus"></i></button>
+            <span class="score-value" id="team-a-display">0</span>
+            <button class="score-btn" id="team-a-plus" onclick="adjustScore('A', 1)"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+
+        <!-- VS Divider -->
+        <div class="vs-divider">VS</div>
+
+        <!-- Team B -->
+        <div class="team-container">
+          <div class="team-logo-wrapper" id="team-b-logo">⚽</div>
+          <div class="team-name" id="team-b-name">Team B</div>
+          <div class="score-selector">
+            <button class="score-btn" id="team-b-minus" onclick="adjustScore('B', -1)"><i class="fa-solid fa-minus"></i></button>
+            <span class="score-value" id="team-b-display">0</span>
+            <button class="score-btn" id="team-b-plus" onclick="adjustScore('B', 1)"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timer Box -->
+      <div class="timer-container">
+        <div class="timer-label" id="timer-status">Submissions Close In</div>
+        <div style="font-size: 0.85rem; font-weight: 600; color: var(--accent-gold); margin-bottom: 0.75rem;" id="match-kickoff-display">
+          Kickoff: --
+        </div>
+        <div class="timer-display" id="countdown-timer">
+          <div class="timer-segment">
+            <span class="timer-val" id="days-val">00</span>
+            <span class="timer-unit">Days</span>
+          </div>
+          <span class="timer-divider">:</span>
+          <div class="timer-segment">
+            <span class="timer-val" id="hours-val">00</span>
+            <span class="timer-unit">Hours</span>
+          </div>
+          <span class="timer-divider">:</span>
+          <div class="timer-segment">
+            <span class="timer-val" id="mins-val">00</span>
+            <span class="timer-unit">Mins</span>
+          </div>
+          <span class="timer-divider">:</span>
+          <div class="timer-segment">
+            <span class="timer-val" id="secs-val">00</span>
+            <span class="timer-unit">Secs</span>
+          </div>
+        </div>
+        <div class="progress-bar-bg" id="timer-progress-container">
+          <div class="progress-bar-fill" id="timer-progress"></div>
+        </div>
+        <div id="locked-badge" class="locked-badge" style="display: none;">
+          <i class="fa-solid fa-lock"></i> Prediction Locked
+        </div>
+      </div>
+
+      <!-- Prediction Form -->
+      <form id="prediction-form" onsubmit="submitPrediction(event)">
+        <div class="form-group">
+          <label class="form-label" for="student-name">Full Name</label>
+          <div class="input-wrapper">
+            <span class="input-icon"><i class="fa-solid fa-user"></i></span>
+            <input class="form-input" type="text" id="student-name" placeholder="Enter your full name" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="student-phone">Phone Number (Unique ID)</label>
+          <div class="input-wrapper">
+            <span class="input-icon"><i class="fa-solid fa-phone"></i></span>
+            <input class="form-input" type="tel" id="student-phone" placeholder="Enter your phone number" required>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="btn-submit">
+          <span>Lock In Prediction</span>
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- SUCCESS / ALREADY SUBMITTED STATE -->
+    <div id="success-state" class="success-state" style="display: none;">
+      <div class="success-icon-ring">
+        <i class="fa-solid fa-check"></i>
+      </div>
+      <h2 class="success-title">Prediction Saved!</h2>
+      <p class="success-desc">Your prediction has been successfully locked in. Check the winner board after the match results are updated!</p>
+      
+      <div class="prediction-receipt">
+        <div class="receipt-row">
+          <span class="receipt-label">Student Name:</span>
+          <span class="receipt-value" id="receipt-name">-</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-label">Phone Number:</span>
+          <span class="receipt-value" id="receipt-phone">-</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-label">Prediction:</span>
+          <span class="receipt-value highlight" id="receipt-prediction">-</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-label">Timestamp:</span>
+          <span class="receipt-value" id="receipt-time">-</span>
+        </div>
+      </div>
+
+      <button class="reset-btn" onclick="clearCachedPrediction()">
+        <i class="fa-solid fa-arrow-rotate-left"></i> Submit another prediction (New Phone)
+      </button>
+    </div>
+
+    <!-- ERROR/NO MATCH STATE -->
+    <div id="error-state" class="text-center" style="display: none; padding: 2rem 0;">
+      <i class="fa-solid fa-circle-info" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1.5rem;"></i>
+      <h3 style="margin-bottom: 0.5rem;">No Active Prediction</h3>
+      <p style="color: var(--text-secondary); max-width: 300px; margin: 0 auto;">The administrator has not set up a match for prediction yet. Please check back later.</p>
+    </div>
+
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast">
+    <span id="toast-icon" class="toast-icon"></span>
+    <span id="toast-message"></span>
+  </div>
+
+  <!-- Canvas Confetti Library from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Application JS imports -->
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Helper scripts for inline click handlers to bridge module-scoped functions -->
+  <script>
+    // Bridge functions from ES module to window scope
+    window.adjustScore = (team, offset) => {
+      const el = document.getElementById(`team-${team.toLowerCase()}-display`);
+      let val = parseInt(el.textContent) + offset;
+      if (val < 0) val = 0;
+      el.textContent = val;
+    };
+    
+    window.submitPrediction = (e) => {
+      e.preventDefault();
+      // Dispatch custom event to trigger app.js submit logic
+      const submitEvent = new CustomEvent('app-submit-prediction', {
+        detail: {
+          name: document.getElementById('student-name').value.trim(),
+          phone: document.getElementById('student-phone').value.trim(),
+          scoreA: parseInt(document.getElementById('team-a-display').textContent),
+          scoreB: parseInt(document.getElementById('team-b-display').textContent)
+        }
+      });
+      window.dispatchEvent(submitEvent);
+    };
+
+    window.clearCachedPrediction = () => {
+      window.dispatchEvent(new CustomEvent('app-reset-prediction'));
+    };
+  </script>
+</body>
+</html>
