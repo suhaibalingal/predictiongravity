@@ -220,6 +220,7 @@ h1 {
   justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
+  flex-shrink: 0; /* Prevent button from shrinking on small screens */
 }
 
 .score-btn:hover:not(:disabled) {
@@ -247,6 +248,46 @@ h1 {
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
   user-select: none;
+  flex-shrink: 0; /* Prevent score text from shrinking */
+}
+
+/* Mobile responsive adjustments for scoreboards */
+@media (max-width: 420px) {
+  .glass-card {
+    padding: 1.5rem 1rem;
+  }
+  .match-container {
+    gap: 0.25rem;
+  }
+  .team-logo-wrapper {
+    width: 70px;
+    height: 70px;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .team-name {
+    font-size: 1.05rem;
+    min-height: auto;
+    margin-bottom: 0.25rem;
+  }
+  .score-selector {
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+  .score-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+  }
+  .score-value {
+    font-size: 2.25rem;
+    width: 32px;
+  }
+  .vs-divider {
+    font-size: 1.1rem;
+    padding-bottom: 2rem; /* Align vertically with flags/names */
+  }
 }
 
 /* Timer styles */
