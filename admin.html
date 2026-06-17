@@ -127,12 +127,27 @@
             <input class="form-input" type="datetime-local" id="cfg-kickoff" required>
           </div>
         </div>
-        <div class="form-group" style="margin-top: -0.5rem;">
-          <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted);">Calculated Submission Deadline (5m before Kickoff)</label>
+        <!-- Prediction Opening Time settings -->
+        <div class="form-group">
+          <label class="form-label" for="cfg-opening">Prediction Opening Time (IST)</label>
           <div class="input-wrapper">
-            <p style="color: var(--accent-cyan); font-weight: 700; font-size: 0.95rem; margin-top: 0.25rem;" id="cfg-deadline-display">
-              Select kickoff time to calculate...
-            </p>
+            <span class="input-icon"><i class="fa-solid fa-calendar-check"></i></span>
+            <input class="form-input" type="datetime-local" id="cfg-opening">
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.1rem;">
+            Optional. Leave blank to open predictions immediately upon publishing.
+          </p>
+        </div>
+        <!-- Prediction Status Display -->
+        <div class="form-group" id="cfg-status-group" style="display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.25);">
+          <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Prediction Status</label>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <div id="cfg-status-display" style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+              -
+            </div>
+            <button type="button" id="btn-force-open" class="submit-btn" style="width: auto; margin-top: 0; padding: 0.35rem 0.75rem; font-size: 0.75rem; background: linear-gradient(135deg, var(--accent-cyan), #0891b2); color: #000; box-shadow: 0 2px 8px rgba(6, 182, 212, 0.2); display: none;">
+              <i class="fa-solid fa-bolt"></i> Open Now
+            </button>
           </div>
         </div>
 
@@ -385,6 +400,7 @@
           teamAFlag: document.getElementById('cfg-team-a-flag').value.trim(),
           teamBFlag: document.getElementById('cfg-team-b-flag').value.trim(),
           kickoff: document.getElementById('cfg-kickoff').value,
+          openingTime: document.getElementById('cfg-opening').value,
           isNewMatch: document.getElementById('cfg-new-match').checked
         }
       }));

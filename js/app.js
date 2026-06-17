@@ -9,7 +9,8 @@ import {
   getDocs,
   addDoc,
   serverTimestamp,
-  orderBy
+  orderBy,
+  onSnapshot
 } from "./firebase-config.js";
 
 // Global DOM elements
@@ -42,6 +43,7 @@ const elTimerProgress = document.getElementById("timer-progress");
 const elTimerProgressContainer = document.getElementById("timer-progress-container");
 const elTimerStatus = document.getElementById("timer-status");
 const elLockedBadge = document.getElementById("locked-badge");
+const elOpeningBadge = document.getElementById("opening-badge");
 const btnSubmit = document.getElementById("btn-submit");
 const elForm = document.getElementById("prediction-form");
 const elKickoffDisplay = document.getElementById("match-kickoff-display");
@@ -96,50 +98,77 @@ function showToast(message, type = "success") {
 async function loadActiveMatch() {
   try {
     const matchDocRef = doc(db, "settings", "match");
-    const matchSnap = await getDoc(matchDocRef);
+    
+    // Subscribe to settings changes in real-time
+    onSnapshot(matchDocRef, (docSnap) => {
+      if (!docSnap.exists()) {
+        elLoading.style.display = "none";
+        elError.style.display = "block";
+        return;
+      }
 
-    if (!matchSnap.exists()) {
+      activeMatch = docSnap.data();
+      
+      // Get the unique match ID from configuration settings
+      currentMatchId = activeMatch.matchId || 'active_match';
+      
+      // Populate match UI
+      elTeamAName.textContent = activeMatch.teamA;
+      elTeamBName.textContent = activeMatch.teamB;
+      elTeamALogo.textContent = activeMatch.teamAFlag || "⚽";
+      elTeamBLogo.textContent = activeMatch.teamBFlag || "⚽";
+
+      // Display Kickoff Time in IST format
+      if (activeMatch.kickoff) {
+        const kickoffDate = new Date(activeMatch.kickoff);
+        elKickoffDisplay.textContent = "Kickoff: " + kickoffDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + " IST";
+      } else {
+        // Fallback for older matches
+        const kickoffDate = new Date(new Date(activeMatch.deadline).getTime() + 5 * 60 * 1000);
+        elKickoffDisplay.textContent = "Kickoff: " + kickoffDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + " IST";
+      }
+      
+      // Check if user has already predicted this match
+      const cachedReceipt = localStorage.getItem(`receipt_${currentMatchId}`);
+      if (cachedReceipt) {
+        showReceipt(JSON.parse(cachedReceipt));
+        elLoading.style.display = "none";
+        elSuccess.style.display = "block";
+        elActive.style.display = "none";
+        return;
+      } else {
+        // Switch back to form view if no receipt exists for the new active match
+        elSuccess.style.display = "none";
+      }
+
+      // Determine current prediction window state
+      const now = new Date().getTime();
+      const openingTime = activeMatch.openingTime ? new Date(activeMatch.openingTime).getTime() : now;
+      
+      if (now < openingTime) {
+        // Predictions have not opened yet
+        startCountdown(activeMatch.openingTime, true);
+        lockSubmissions(true); // Lock inputs with "Opening Soon" state
+      } else {
+        // Normal active window
+        const deadlineTime = new Date(activeMatch.deadline).getTime();
+        if (now >= deadlineTime) {
+          startCountdown(activeMatch.deadline, false);
+          lockSubmissions(false);
+        } else {
+          startCountdown(activeMatch.deadline, false);
+          unlockSubmissions();
+        }
+      }
+
       elLoading.style.display = "none";
-      elError.style.display = "block";
-      return;
-    }
-
-    activeMatch = matchSnap.data();
-    
-    // Get the unique match ID from configuration settings
-    currentMatchId = activeMatch.matchId || 'active_match';
-    
-    // Populate match UI
-    elTeamAName.textContent = activeMatch.teamA;
-    elTeamBName.textContent = activeMatch.teamB;
-    elTeamALogo.textContent = activeMatch.teamAFlag || "⚽";
-    elTeamBLogo.textContent = activeMatch.teamBFlag || "⚽";
-
-    // Display Kickoff Time in IST format
-    if (activeMatch.kickoff) {
-      const kickoffDate = new Date(activeMatch.kickoff);
-      elKickoffDisplay.textContent = "Kickoff: " + kickoffDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + " IST";
-    } else {
-      // Fallback for older matches
-      const kickoffDate = new Date(new Date(activeMatch.deadline).getTime() + 5 * 60 * 1000);
-      elKickoffDisplay.textContent = "Kickoff: " + kickoffDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + " IST";
-    }
-    
-    // Check if user has already predicted this match
-    const cachedReceipt = localStorage.getItem(`receipt_${currentMatchId}`);
-    if (cachedReceipt) {
-      showReceipt(JSON.parse(cachedReceipt));
-      elLoading.style.display = "none";
-      return;
-    }
-
-    // Initialize Countdown Timer
-    startCountdown(activeMatch.deadline);
-
-    elLoading.style.display = "none";
-    elActive.style.display = "block";
+      elActive.style.display = "block";
+    }, (error) => {
+      console.error("Error in active match snapshot subscription:", error);
+      showToast("Sync error. Please reload.", "error");
+    });
   } catch (error) {
-    console.error("Error loading active match details:", error);
+    console.error("Error setting up active match subscription:", error);
     showToast("Failed to load match details. Please refresh the page.", "error");
     elLoading.style.display = "none";
     elError.style.display = "block";
@@ -147,20 +176,36 @@ async function loadActiveMatch() {
 }
 
 // Countdown timer loop logic
-function startCountdown(deadlineStr) {
-  const deadline = new Date(deadlineStr).getTime();
+function startCountdown(targetTimeStr, isOpeningCountdown = false) {
+  if (timerInterval) clearInterval(timerInterval);
+  
+  const targetTime = new Date(targetTimeStr).getTime();
   
   // Total span helper (assume timer starts from configuration time, or default to 24h if missing)
-  const startTime = activeMatch.createdAt ? new Date(activeMatch.createdAt).getTime() : (deadline - 24 * 60 * 60 * 1000);
-  const totalDuration = deadline - startTime;
+  const startTime = activeMatch.createdAt ? new Date(activeMatch.createdAt).getTime() : (targetTime - 24 * 60 * 60 * 1000);
+  const totalDuration = targetTime - startTime;
+
+  if (isOpeningCountdown) {
+    elTimerStatus.textContent = "Predictions Open In";
+    elTimerStatus.style.color = "var(--accent-gold)";
+  } else {
+    elTimerStatus.textContent = "Submissions Close In";
+    elTimerStatus.style.color = "var(--text-muted)";
+  }
 
   function updateTimer() {
     const now = new Date().getTime();
-    const distance = deadline - now;
+    const distance = targetTime - now;
 
     if (distance <= 0) {
       clearInterval(timerInterval);
-      lockSubmissions();
+      if (isOpeningCountdown) {
+        // Automatically open predictions once countdown hits zero!
+        unlockSubmissions();
+        startCountdown(activeMatch.deadline, false);
+      } else {
+        lockSubmissions(false);
+      }
       return;
     }
 
@@ -183,16 +228,25 @@ function startCountdown(deadlineStr) {
   timerInterval = setInterval(updateTimer, 1000);
 }
 
-// Disable all prediction controls if time limit expires
-function lockSubmissions() {
-  elDays.textContent = "00";
-  elHours.textContent = "00";
-  elMins.textContent = "00";
-  elSecs.textContent = "00";
-  elTimerProgress.style.width = "0%";
-  
-  elTimerStatus.textContent = "Prediction Window Closed";
-  elTimerStatus.style.color = "#ef4444";
+// Disable all prediction controls if time limit expires or if not opened yet
+function lockSubmissions(isOpeningSoon = false) {
+  if (!isOpeningSoon) {
+    elDays.textContent = "00";
+    elHours.textContent = "00";
+    elMins.textContent = "00";
+    elSecs.textContent = "00";
+    elTimerProgress.style.width = "0%";
+    
+    elTimerStatus.textContent = "Prediction Window Closed";
+    elTimerStatus.style.color = "#ef4444";
+    elLockedBadge.style.display = "inline-flex";
+    elOpeningBadge.style.display = "none";
+  } else {
+    elTimerStatus.textContent = "Predictions Open Soon";
+    elTimerStatus.style.color = "var(--accent-gold)";
+    elOpeningBadge.style.display = "inline-flex";
+    elLockedBadge.style.display = "none";
+  }
   
   // Disable score UI
   btnTeamAMinus.disabled = true;
@@ -204,8 +258,23 @@ function lockSubmissions() {
   document.getElementById("student-name").disabled = true;
   document.getElementById("student-phone").disabled = true;
   btnSubmit.disabled = true;
+}
+
+// Enable all prediction controls
+function unlockSubmissions() {
+  btnTeamAMinus.disabled = false;
+  btnTeamAPlus.disabled = false;
+  btnTeamBMinus.disabled = false;
+  btnTeamBPlus.disabled = false;
   
-  elLockedBadge.style.display = "inline-flex";
+  document.getElementById("student-name").disabled = false;
+  document.getElementById("student-phone").disabled = false;
+  btnSubmit.disabled = false;
+  
+  elLockedBadge.style.display = "none";
+  elOpeningBadge.style.display = "none";
+  elTimerStatus.textContent = "Submissions Close In";
+  elTimerStatus.style.color = "var(--text-muted)";
 }
 
 // Switch UI view to receipt
@@ -338,16 +407,16 @@ window.addEventListener("app-reset-prediction", () => {
   elForm.reset();
   
   // Re-verify locking status
+  const now = new Date().getTime();
+  const openingTime = activeMatch.openingTime ? new Date(activeMatch.openingTime).getTime() : now;
   const deadlineTime = new Date(activeMatch.deadline).getTime();
-  if (new Date().getTime() >= deadlineTime) {
-    lockSubmissions();
+  
+  if (now < openingTime) {
+    lockSubmissions(true);
+  } else if (now >= deadlineTime) {
+    lockSubmissions(false);
   } else {
-    document.getElementById("student-name").disabled = false;
-    document.getElementById("student-phone").disabled = false;
-    btnSubmit.disabled = false;
-    elLockedBadge.style.display = "none";
-    elTimerStatus.textContent = "Submissions Close In";
-    elTimerStatus.style.color = "var(--text-muted)";
+    unlockSubmissions();
   }
 });
 
@@ -362,6 +431,19 @@ window.addEventListener("app-show-current-state", () => {
   if (cachedReceipt) {
     showReceipt(JSON.parse(cachedReceipt));
   } else {
+    const now = new Date().getTime();
+    const openingTime = activeMatch.openingTime ? new Date(activeMatch.openingTime).getTime() : now;
+    
+    if (now < openingTime) {
+      lockSubmissions(true);
+    } else {
+      const deadlineTime = new Date(activeMatch.deadline).getTime();
+      if (now >= deadlineTime) {
+        lockSubmissions(false);
+      } else {
+        unlockSubmissions();
+      }
+    }
     elActive.style.display = "block";
   }
 });

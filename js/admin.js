@@ -44,6 +44,7 @@ const elTeamBFlag = document.getElementById("cfg-team-b-flag");
 const elTeamAFlagIndicator = document.getElementById("cfg-team-a-flag-indicator");
 const elTeamBFlagIndicator = document.getElementById("cfg-team-b-flag-indicator");
 const elKickoff = document.getElementById("cfg-kickoff");
+const elOpening = document.getElementById("cfg-opening");
 const elDeadlineDisplay = document.getElementById("cfg-deadline-display");
 const btnSaveCfg = document.getElementById("btn-save-cfg");
 
@@ -105,6 +106,15 @@ window.addEventListener("DOMContentLoaded", () => {
       elPresetSelect.appendChild(opt);
     });
   }
+
+  // Force Open predictions event listener
+  const btnForceOpen = document.getElementById("btn-force-open");
+  if (btnForceOpen) {
+    btnForceOpen.addEventListener("click", forceOpenPredictions);
+  }
+
+  // Periodic status update check every 5 seconds
+  setInterval(updatePredictionStatusDisplay, 5000);
 
   checkAuthentication();
 });
@@ -221,6 +231,7 @@ async function loadMatchConfig() {
       elTeamAFlagIndicator.textContent = activeMatch.teamAFlag || "🇦🇷";
       elTeamBFlagIndicator.textContent = activeMatch.teamBFlag || "🇫🇷";
       elKickoff.value = formatLocalDateTime(activeMatch.kickoff || activeMatch.deadline);
+      elOpening.value = activeMatch.openingTime ? formatLocalDateTime(activeMatch.openingTime) : "";
       updateCalculatedDeadline();
 
       // Populate Result section names
@@ -240,6 +251,9 @@ async function loadMatchConfig() {
 
       currentMatchId = activeMatch.matchId || 'active_match';
       
+      // Update Prediction Status Display
+      updatePredictionStatusDisplay();
+      
       // Listen to predictions real-time
       listenToPredictions();
     }
@@ -249,8 +263,71 @@ async function loadMatchConfig() {
   }
 }
 
+function updatePredictionStatusDisplay() {
+  const elStatusGroup = document.getElementById("cfg-status-group");
+  const elStatusDisplay = document.getElementById("cfg-status-display");
+  const btnForceOpen = document.getElementById("btn-force-open");
+
+  if (!elStatusGroup || !elStatusDisplay || !btnForceOpen) return;
+
+  if (!activeMatch) {
+    elStatusGroup.style.display = "none";
+    return;
+  }
+
+  elStatusGroup.style.display = "block";
+
+  const now = new Date().getTime();
+  const openingTime = activeMatch.openingTime ? new Date(activeMatch.openingTime).getTime() : now;
+  const deadlineTime = activeMatch.deadline ? new Date(activeMatch.deadline).getTime() : now;
+
+  if (now < openingTime) {
+    const openDate = new Date(openingTime);
+    elStatusDisplay.innerHTML = `<span style="color: var(--accent-gold);"><i class="fa-solid fa-clock"></i> Scheduled</span> (Opens ${openDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST)`;
+    btnForceOpen.style.display = "inline-flex";
+  } else if (now >= deadlineTime) {
+    elStatusDisplay.innerHTML = `<span style="color: #ef4444;"><i class="fa-solid fa-lock"></i> Closed</span> (Ended)`;
+    btnForceOpen.style.display = "none";
+  } else {
+    elStatusDisplay.innerHTML = `<span style="color: var(--accent-neon);"><i class="fa-solid fa-lock-open"></i> Active (Open)</span>`;
+    btnForceOpen.style.display = "none";
+  }
+}
+
+async function forceOpenPredictions() {
+  if (!activeMatch) return;
+  
+  const btnForceOpen = document.getElementById("btn-force-open");
+  if (!btnForceOpen) return;
+  
+  btnForceOpen.disabled = true;
+  btnForceOpen.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Opening...';
+  
+  try {
+    const matchDocRef = doc(db, "settings", "match");
+    const nowISO = new Date().toISOString();
+    
+    const payload = {
+      ...activeMatch,
+      openingTime: nowISO
+    };
+    
+    await setDoc(matchDocRef, payload);
+    showToast("Predictions opened immediately!", "success");
+    
+    // Reload configurations
+    await loadMatchConfig();
+  } catch (error) {
+    console.error("Error opening predictions:", error);
+    showToast("Failed to open predictions.", "error");
+  } finally {
+    btnForceOpen.disabled = false;
+    btnForceOpen.innerHTML = '<i class="fa-solid fa-bolt"></i> Open Now';
+  }
+}
+
 window.addEventListener("admin-save-match", async (e) => {
-  const { teamA, teamB, teamAFlag, teamBFlag, kickoff, isNewMatch } = e.detail;
+  const { teamA, teamB, teamAFlag, teamBFlag, kickoff, openingTime, isNewMatch } = e.detail;
 
   btnSaveCfg.disabled = true;
   btnSaveCfg.innerHTML = '<span>Saving...</span> <i class="fa-solid fa-circle-notch fa-spin"></i>';
@@ -280,6 +357,9 @@ window.addEventListener("admin-save-match", async (e) => {
     const deadlineTime = kickoffTime - 5 * 60 * 1000;
     const deadline = new Date(deadlineTime).toISOString();
 
+    // If openingTime is blank, open predictions immediately (set to now)
+    const openingTimeISO = openingTime ? new Date(openingTime).toISOString() : new Date().toISOString();
+
     const matchDocRef = doc(db, "settings", "match");
     const payload = {
       matchId,
@@ -289,6 +369,7 @@ window.addEventListener("admin-save-match", async (e) => {
       teamBFlag,
       kickoff,
       deadline,
+      openingTime: openingTimeISO,
       resultTeamA: scoreA,
       resultTeamB: scoreB,
       createdAt: activeMatch && !isReset && activeMatch.createdAt ? activeMatch.createdAt : new Date().toISOString()
