@@ -8,7 +8,8 @@ import {
   where,
   getDocs,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  orderBy
 } from "./firebase-config.js";
 
 // Global DOM elements
@@ -349,3 +350,162 @@ window.addEventListener("app-reset-prediction", () => {
     elTimerStatus.style.color = "var(--text-muted)";
   }
 });
+
+// Switch and render current prediction state
+window.addEventListener("app-show-current-state", () => {
+  if (!activeMatch) {
+    elError.style.display = "block";
+    return;
+  }
+  
+  const cachedReceipt = localStorage.getItem(`receipt_${currentMatchId}`);
+  if (cachedReceipt) {
+    showReceipt(JSON.parse(cachedReceipt));
+  } else {
+    elActive.style.display = "block";
+  }
+});
+
+// Load match winners list
+window.addEventListener("app-load-winners", async () => {
+  const elWinnersDesc = document.getElementById("winners-match-desc");
+  const elScoreDisplay = document.getElementById("winners-score-display");
+  const elWinnersTbody = document.getElementById("portal-winners-tbody");
+
+  if (!activeMatch) {
+    elWinnersTbody.innerHTML = `<tr><td colspan="4" class="empty-state">No active match found.</td></tr>`;
+    return;
+  }
+
+  elWinnersDesc.textContent = `Correct predictions for: ${activeMatch.teamAFlag || ""} ${activeMatch.teamA} vs ${activeMatch.teamB} ${activeMatch.teamBFlag || ""}`;
+
+  const hasResult = activeMatch.resultTeamA !== undefined && activeMatch.resultTeamA !== null &&
+                    activeMatch.resultTeamB !== undefined && activeMatch.resultTeamB !== null;
+
+  if (!hasResult) {
+    elScoreDisplay.innerHTML = `<span>Result Pending</span>`;
+    elWinnersTbody.innerHTML = `
+      <tr>
+        <td colspan="4" class="empty-state">
+          <i class="fa-solid fa-clock-rotate-left" style="font-size: 2rem; margin-bottom: 0.75rem; color: var(--text-muted);"></i>
+          <br>Match result is not declared yet. Check back once the match finishes!
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  elScoreDisplay.innerHTML = `
+    <span>${activeMatch.teamAFlag || ""} ${activeMatch.resultTeamA}</span>
+    <span style="color: var(--accent-cyan); font-size: 1.25rem;">-</span>
+    <span>${activeMatch.resultTeamB} ${activeMatch.teamBFlag || ""}</span>
+  `;
+
+  elWinnersTbody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding: 2rem 0;"><i class="fa-solid fa-circle-notch fa-spin" style="color: var(--accent-cyan); font-size: 1.5rem;"></i></td></tr>`;
+
+  try {
+    const predsRef = collection(db, "predictions");
+    // Query exact scoreline predictions for this matchId
+    const q = query(
+      predsRef,
+      where("matchId", "==", currentMatchId),
+      where("scoreA", "==", activeMatch.resultTeamA),
+      where("scoreB", "==", activeMatch.resultTeamB)
+    );
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      let jsDate = new Date();
+      if (data.timestamp) {
+        jsDate = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
+      }
+      list.push({
+        ...data,
+        resolvedDate: jsDate
+      });
+    });
+
+    // Sort by timestamp ascending (speed rank)
+    list.sort((a, b) => a.resolvedDate - b.resolvedDate);
+
+    if (list.length === 0) {
+      elWinnersTbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="empty-state">
+            No students predicted the correct score line: ${activeMatch.resultTeamA} - ${activeMatch.resultTeamB}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    let html = "";
+    list.forEach((winner, idx) => {
+      const dateStr = winner.resolvedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const badge = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`;
+      html += `
+        <tr>
+          <td style="text-align: center; font-weight: 700;">${badge}</td>
+          <td class="name-cell">${escapeHtml(winner.name)}</td>
+          <td class="prediction-cell correct">${activeMatch.teamAFlag} ${winner.scoreA} - ${winner.scoreB} ${activeMatch.teamBFlag}</td>
+          <td class="time-cell">${dateStr}</td>
+        </tr>
+      `;
+    });
+    elWinnersTbody.innerHTML = html;
+  } catch (err) {
+    console.error("Error loading winners list:", err);
+    elWinnersTbody.innerHTML = `<tr><td colspan="4" class="empty-state">Failed to load winners.</td></tr>`;
+  }
+});
+
+// Load global leaderboard
+window.addEventListener("app-load-leaderboard", async () => {
+  const elLeaderboardTbody = document.getElementById("portal-leaderboard-tbody");
+  elLeaderboardTbody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding: 2rem 0;"><i class="fa-solid fa-circle-notch fa-spin" style="color: var(--accent-cyan); font-size: 1.5rem;"></i></td></tr>`;
+
+  try {
+    const boardRef = collection(db, "leaderboard");
+    const q = query(boardRef, orderBy("points", "desc"), orderBy("exactCount", "desc"));
+    const snap = await getDocs(q);
+    
+    if (snap.empty) {
+      elLeaderboardTbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="empty-state">
+            The leaderboard is empty. Points will update after match results are declared.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    let html = "";
+    let rank = 1;
+    snap.forEach(docSnap => {
+      const user = docSnap.data();
+      const badge = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}`;
+      html += `
+        <tr>
+          <td style="text-align: center; font-weight: 700;">${badge}</td>
+          <td class="name-cell">${escapeHtml(user.name)}</td>
+          <td style="text-align: center; font-weight: 600; color: var(--accent-gold);">${user.exactCount || 0}</td>
+          <td style="text-align: center; font-weight: 800; color: var(--accent-cyan);">${user.points || 0} pts</td>
+        </tr>
+      `;
+      rank++;
+    });
+    elLeaderboardTbody.innerHTML = html;
+  } catch (err) {
+    console.error("Error loading leaderboard:", err);
+    elLeaderboardTbody.innerHTML = `<tr><td colspan="4" class="empty-state">Failed to load leaderboard.</td></tr>`;
+  }
+});
+
+function escapeHtml(str) {
+  if (!str) return "";
+  const div = document.createElement("div");
+  div.innerText = str;
+  return div.innerHTML;
+}

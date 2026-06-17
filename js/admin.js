@@ -8,7 +8,8 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot
+  onSnapshot,
+  getDocs
 } from "./firebase-config.js";
 
 // Global Admin Passcode - Customizable
@@ -335,7 +336,12 @@ window.addEventListener("admin-save-results", async (e) => {
 
     await setDoc(matchDocRef, payload);
     
-    showToast("Match results updated!", "success");
+    // Recalculate leaderboard points for all entries
+    if (scoreA !== null && scoreB !== null) {
+      await updateGlobalLeaderboard(activeMatch.matchId || 'active_match', scoreA, scoreB);
+    }
+    
+    showToast("Match results updated and leaderboard recalculated!", "success");
     
     // Refresh configurations
     await loadMatchConfig();
@@ -588,4 +594,67 @@ function triggerConfetti() {
       requestAnimationFrame(frame);
     }
   }());
+}
+
+// Calculate and update global leaderboard points in Firestore
+async function updateGlobalLeaderboard(matchId, scoreA, scoreB) {
+  const predsRef = collection(db, "predictions");
+  const q = query(predsRef, where("matchId", "==", matchId));
+  const snap = await getDocs(q);
+  
+  // Loop through each prediction and calculate points
+  for (const docSnap of snap.docs) {
+    const pred = docSnap.data();
+    const phone = pred.phone;
+    
+    let points = 0;
+    if (pred.scoreA === scoreA && pred.scoreB === scoreB) {
+      points = 3; // Exact Score prediction
+    } else if ((pred.scoreA > pred.scoreB && scoreA > scoreB) ||
+               (pred.scoreA < pred.scoreB && scoreA < scoreB) ||
+               (pred.scoreA === pred.scoreB && scoreA === scoreB)) {
+      points = 1; // Correct Outcome prediction
+    }
+    
+    // Read existing leaderboard entry
+    const userDocRef = doc(db, "leaderboard", phone);
+    const userSnap = await getDoc(userDocRef);
+    
+    let userDoc = {
+      name: pred.name,
+      phone: phone,
+      history: {},
+      points: 0,
+      exactCount: 0,
+      outcomeCount: 0
+    };
+    
+    if (userSnap.exists()) {
+      userDoc = userSnap.data();
+      // Ensure history map is initialized
+      if (!userDoc.history) userDoc.history = {};
+    }
+    
+    // Update history for this match
+    userDoc.history[matchId] = points;
+    
+    // Recalculate totals
+    let totalPoints = 0;
+    let totalExacts = 0;
+    let totalOutcomes = 0;
+    
+    for (const mId in userDoc.history) {
+      const pts = userDoc.history[mId];
+      totalPoints += pts;
+      if (pts === 3) totalExacts++;
+      if (pts === 1) totalOutcomes++;
+    }
+    
+    userDoc.points = totalPoints;
+    userDoc.exactCount = totalExacts;
+    userDoc.outcomeCount = totalOutcomes;
+    
+    // Save back to Firestore
+    await setDoc(userDocRef, userDoc);
+  }
 }

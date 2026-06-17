@@ -25,6 +25,19 @@
     <p>Please open <code>js/firebase-config.js</code> and insert your Firebase Web SDK credentials to activate the application.</p>
   </div>
 
+  <!-- Tab Navigation -->
+  <div class="tab-container" style="max-width: 580px; width: 100%; margin-bottom: 1rem;">
+    <button class="tab-btn active" id="tab-predict-btn" onclick="switchPortalTab('predict')">
+      <i class="fa-solid fa-square-poll-horizontal"></i> Predict Match
+    </button>
+    <button class="tab-btn" id="tab-winners-btn" onclick="switchPortalTab('winners')">
+      <i class="fa-solid fa-medal"></i> Match Winners
+    </button>
+    <button class="tab-btn" id="tab-leaderboard-btn" onclick="switchPortalTab('leaderboard')">
+      <i class="fa-solid fa-ranking-star"></i> Leaderboard
+    </button>
+  </div>
+
   <main class="glass-card" id="app-card">
     
     <!-- LOADING STATE -->
@@ -163,6 +176,75 @@
       <p style="color: var(--text-secondary); max-width: 300px; margin: 0 auto;">The administrator has not set up a match for prediction yet. Please check back later.</p>
     </div>
 
+    <!-- MATCH WINNERS STATE -->
+    <div id="winners-state" style="display: none;">
+      <div class="admin-card-header" style="border: none; margin-bottom: 0.5rem; padding-bottom: 0; display: flex; justify-content: center; text-align: center;">
+        <h3 class="admin-card-title" style="font-size: 1.4rem; justify-content: center;"><i class="fa-solid fa-medal text-accent-gold"></i> Match Winners</h3>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center; margin-bottom: 1.5rem;" id="winners-match-desc">
+        Correct predictions for the completed match.
+      </p>
+
+      <!-- Match Result Badge -->
+      <div class="timer-container" style="margin-bottom: 1.5rem; background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);">
+        <div class="timer-label" style="color: var(--accent-neon); margin-bottom: 0.25rem;">Official Match Score</div>
+        <div style="font-size: 1.8rem; font-weight: 800; color: white; display: flex; align-items: center; gap: 0.75rem; justify-content: center;" id="winners-score-display">
+          <span>--</span>
+        </div>
+      </div>
+
+      <div class="sub-table-container">
+        <table class="sub-table">
+          <thead>
+            <tr>
+              <th style="width: 60px; text-align: center;">Rank</th>
+              <th>Student</th>
+              <th>Prediction</th>
+              <th>Submitted At</th>
+            </tr>
+          </thead>
+          <tbody id="portal-winners-tbody">
+            <tr>
+              <td colspan="4" class="empty-state">Loading match winners...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- GLOBAL LEADERBOARD STATE -->
+    <div id="leaderboard-state" style="display: none;">
+      <div class="admin-card-header" style="border: none; margin-bottom: 0.5rem; padding-bottom: 0; display: flex; justify-content: center; text-align: center;">
+        <h3 class="admin-card-title" style="font-size: 1.4rem; justify-content: center;"><i class="fa-solid fa-ranking-star text-accent-cyan"></i> Global Points Table</h3>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center; margin-bottom: 1.5rem;">
+        Cumulative points leaderboard across all tournament matches.
+      </p>
+
+      <!-- Scoring Rule Tip -->
+      <p style="color: var(--text-muted); font-size: 0.75rem; text-align: center; margin-bottom: 1rem; font-style: italic;">
+        Scoring: Exact Score = 3 Points | Correct Outcome (Winner/Draw) = 1 Point
+      </p>
+
+      <div class="sub-table-container">
+        <table class="sub-table">
+          <thead>
+            <tr>
+              <th style="width: 60px; text-align: center;">Rank</th>
+              <th>Student</th>
+              <th style="text-align: center;">Exacts (3p)</th>
+              <th style="text-align: center;">Points</th>
+            </tr>
+          </thead>
+          <tbody id="portal-leaderboard-tbody">
+            <tr>
+              <td colspan="4" class="empty-state">Loading global leaderboard...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 
   <footer class="footer-container" style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; letter-spacing: 0.025em; text-transform: uppercase;">
@@ -209,6 +291,43 @@
 
     window.clearCachedPrediction = () => {
       window.dispatchEvent(new CustomEvent('app-reset-prediction'));
+    };
+
+    window.switchPortalTab = (tabName) => {
+      const actState = document.getElementById('active-state');
+      const winState = document.getElementById('winners-state');
+      const leadState = document.getElementById('leaderboard-state');
+      const succState = document.getElementById('success-state');
+      const errorState = document.getElementById('error-state');
+      
+      const tabPredict = document.getElementById('tab-predict-btn');
+      const tabWinners = document.getElementById('tab-winners-btn');
+      const tabLeaderboard = document.getElementById('tab-leaderboard-btn');
+      
+      // Hide all states
+      actState.style.display = 'none';
+      winState.style.display = 'none';
+      leadState.style.display = 'none';
+      succState.style.display = 'none';
+      errorState.style.display = 'none';
+      
+      // Deactivate all tab buttons
+      tabPredict.classList.remove('active');
+      tabWinners.classList.remove('active');
+      tabLeaderboard.classList.remove('active');
+      
+      if (tabName === 'predict') {
+        tabPredict.classList.add('active');
+        window.dispatchEvent(new CustomEvent('app-show-current-state'));
+      } else if (tabName === 'winners') {
+        tabWinners.classList.add('active');
+        winState.style.display = 'block';
+        window.dispatchEvent(new CustomEvent('app-load-winners'));
+      } else if (tabName === 'leaderboard') {
+        tabLeaderboard.classList.add('active');
+        leadState.style.display = 'block';
+        window.dispatchEvent(new CustomEvent('app-load-leaderboard'));
+      }
     };
   </script>
 </body>

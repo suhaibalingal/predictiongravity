@@ -60,24 +60,29 @@ service cloud.firestore {
     
     // Anyone can read the active match details
     match /settings/match {
-      allow read: if true;
-      allow write: if true; // Set to true to allow client-side admin setup
+      allow read, write: if true; // Allow client-side admin setup
     }
 
     // Secure student predictions
     match /predictions/{predictionId} {
-      // Allow creation only
+      // Allow creation only if current time is before prediction deadline
       allow create: if request.resource.data.matchId != null &&
                        request.resource.data.name != null &&
                        request.resource.data.phone != null &&
                        request.resource.data.scoreA is int &&
-                       request.resource.data.scoreB is int;
+                       request.resource.data.scoreB is int &&
+                       request.time < timestamp(get(/databases/$(database)/documents/settings/match).data.deadline);
       
-      // Allow the client-side admin view to read submissions
+      // Allow read so student portal can fetch winners and admin can calculate results
       allow read: if true; 
       
       // Prevent students from editing or deleting predictions
       allow update, delete: if false;
+    }
+
+    // Leaderboard access
+    match /leaderboard/{phone} {
+      allow read, write: if true; // Allow student read, and admin recalculation writes
     }
   }
 }
