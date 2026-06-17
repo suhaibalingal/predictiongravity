@@ -288,6 +288,10 @@ h1 {
     font-size: 1.1rem;
     padding-bottom: 2rem; /* Align vertically with flags/names */
   }
+  .sub-table th, .sub-table td {
+    padding: 0.65rem 0.4rem;
+    font-size: 0.8rem;
+  }
 }
 
 /* Timer styles */
