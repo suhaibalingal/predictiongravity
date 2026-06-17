@@ -549,8 +549,7 @@ window.addEventListener("app-load-leaderboard", async () => {
 
   try {
     const boardRef = collection(db, "leaderboard");
-    const q = query(boardRef, orderBy("points", "desc"), orderBy("exactCount", "desc"));
-    const snap = await getDocs(q);
+    const snap = await getDocs(boardRef);
     
     if (snap.empty) {
       elLeaderboardTbody.innerHTML = `
@@ -563,10 +562,24 @@ window.addEventListener("app-load-leaderboard", async () => {
       return;
     }
 
+    const leaderboardData = [];
+    snap.forEach(docSnap => {
+      leaderboardData.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+
+    // Sort in-memory: points descending, then exactCount descending
+    leaderboardData.sort((a, b) => {
+      const pointsDiff = (b.points || 0) - (a.points || 0);
+      if (pointsDiff !== 0) return pointsDiff;
+      return (b.exactCount || 0) - (a.exactCount || 0);
+    });
+
     let html = "";
     let rank = 1;
-    snap.forEach(docSnap => {
-      const user = docSnap.data();
+    leaderboardData.forEach(user => {
       const badge = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}`;
       html += `
         <tr>
