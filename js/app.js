@@ -542,67 +542,7 @@ window.addEventListener("app-load-winners", async () => {
   }
 });
 
-// Load global leaderboard
-window.addEventListener("app-load-leaderboard", async () => {
-  const elLeaderboardTbody = document.getElementById("portal-leaderboard-tbody");
-  elLeaderboardTbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 2rem 0;"><i class="fa-solid fa-circle-notch fa-spin" style="color: var(--accent-cyan); font-size: 1.5rem;"></i></td></tr>`;
 
-  try {
-    const boardRef = collection(db, "leaderboard");
-    const snap = await getDocs(boardRef);
-    
-    if (snap.empty) {
-      elLeaderboardTbody.innerHTML = `
-        <tr>
-          <td colspan="6" class="empty-state">
-            The leaderboard is empty. Points will update after match results are declared.
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    const leaderboardData = [];
-    snap.forEach(docSnap => {
-      leaderboardData.push({
-        id: docSnap.id,
-        ...docSnap.data()
-      });
-    });
-
-    // Sort in-memory: points descending, then exactCount descending
-    leaderboardData.sort((a, b) => {
-      const pointsDiff = (b.points || 0) - (a.points || 0);
-      if (pointsDiff !== 0) return pointsDiff;
-      return (b.exactCount || 0) - (a.exactCount || 0);
-    });
-
-    let html = "";
-    let rank = 1;
-    leaderboardData.forEach(user => {
-      const badge = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}`;
-      const playedCount = user.history ? Object.keys(user.history).length : 0;
-      const exactCount = user.exactCount || 0;
-      const outcomeCount = user.outcomeCount || 0;
-      
-      html += `
-        <tr>
-          <td style="text-align: center; font-weight: 700;">${badge}</td>
-          <td class="name-cell">${escapeHtml(user.name)}</td>
-          <td style="text-align: center; font-weight: 600;">${playedCount}</td>
-          <td style="text-align: center; font-weight: 600; color: var(--accent-gold);">${exactCount}</td>
-          <td style="text-align: center; font-weight: 600; color: var(--text-secondary);">${outcomeCount}</td>
-          <td style="text-align: center; font-weight: 800; color: var(--accent-cyan);">${user.points || 0} pts</td>
-        </tr>
-      `;
-      rank++;
-    });
-    elLeaderboardTbody.innerHTML = html;
-  } catch (err) {
-    console.error("Error loading leaderboard:", err);
-    elLeaderboardTbody.innerHTML = `<tr><td colspan="6" class="empty-state">Failed to load leaderboard.</td></tr>`;
-  }
-});
 
 function escapeHtml(str) {
   if (!str) return "";

@@ -33,9 +33,6 @@
     <button class="tab-btn" id="tab-winners-btn" onclick="switchPortalTab('winners')">
       <i class="fa-solid fa-medal"></i> Match Winners
     </button>
-    <button class="tab-btn" id="tab-leaderboard-btn" onclick="switchPortalTab('leaderboard')">
-      <i class="fa-solid fa-ranking-star"></i> Leaderboard
-    </button>
   </div>
 
   <main class="glass-card" id="app-card">
@@ -215,41 +212,6 @@
       </div>
     </div>
 
-    <!-- GLOBAL LEADERBOARD STATE -->
-    <div id="leaderboard-state" style="display: none;">
-      <div class="admin-card-header" style="border: none; margin-bottom: 0.5rem; padding-bottom: 0; display: flex; justify-content: center; text-align: center;">
-        <h3 class="admin-card-title" style="font-size: 1.4rem; justify-content: center;"><i class="fa-solid fa-ranking-star text-accent-cyan"></i> Global Points Table</h3>
-      </div>
-      <p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center; margin-bottom: 1.5rem;">
-        Cumulative points leaderboard across all tournament matches.
-      </p>
-
-      <!-- Scoring Rule Tip -->
-      <p style="color: var(--text-muted); font-size: 0.75rem; text-align: center; margin-bottom: 1rem; font-style: italic;">
-        Scoring: Exact Score = 3 Points | Correct Outcome (Winner/Draw) = 1 Point
-      </p>
-
-      <div class="sub-table-container">
-        <table class="sub-table">
-          <thead>
-            <tr>
-              <th style="width: 50px; text-align: center;">Rank</th>
-              <th>Student</th>
-              <th style="text-align: center; width: 40px;" title="Played (Total Predictions)">P</th>
-              <th style="text-align: center; width: 40px;" title="Exact Score Predictions (3 pts each)">E</th>
-              <th style="text-align: center; width: 40px;" title="Correct Outcome Predictions (1 pt each)">CO</th>
-              <th style="text-align: center; width: 60px;" title="Total Points">PTS</th>
-            </tr>
-          </thead>
-          <tbody id="portal-leaderboard-tbody">
-            <tr>
-              <td colspan="6" class="empty-state">Loading global leaderboard...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
   </main>
 
   <footer class="footer-container" style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; letter-spacing: 0.025em; text-transform: uppercase;">
@@ -301,25 +263,21 @@
     window.switchPortalTab = (tabName) => {
       const actState = document.getElementById('active-state');
       const winState = document.getElementById('winners-state');
-      const leadState = document.getElementById('leaderboard-state');
       const succState = document.getElementById('success-state');
       const errorState = document.getElementById('error-state');
       
       const tabPredict = document.getElementById('tab-predict-btn');
       const tabWinners = document.getElementById('tab-winners-btn');
-      const tabLeaderboard = document.getElementById('tab-leaderboard-btn');
       
       // Hide all states
       actState.style.display = 'none';
       winState.style.display = 'none';
-      leadState.style.display = 'none';
       succState.style.display = 'none';
       errorState.style.display = 'none';
       
       // Deactivate all tab buttons
       tabPredict.classList.remove('active');
       tabWinners.classList.remove('active');
-      tabLeaderboard.classList.remove('active');
       
       if (tabName === 'predict') {
         tabPredict.classList.add('active');
@@ -328,10 +286,6 @@
         tabWinners.classList.add('active');
         winState.style.display = 'block';
         window.dispatchEvent(new CustomEvent('app-load-winners'));
-      } else if (tabName === 'leaderboard') {
-        tabLeaderboard.classList.add('active');
-        leadState.style.display = 'block';
-        window.dispatchEvent(new CustomEvent('app-load-leaderboard'));
       }
     };
   </script>
