@@ -17,18 +17,18 @@ const ADMIN_PASSCODE = "2026";
 
 // FIFA World Cup 2026 Fixture Presets (localized times in IST)
 const FIXTURE_PRESETS = [
-  { teamA: "Spain", teamAFlag: "🇪🇸", teamB: "Cabo Verde", teamBFlag: "🇨🇻", kickoff: "2026-06-16T03:30" },
-  { teamA: "Belgium", teamAFlag: "🇧🇪", teamB: "Egypt", teamBFlag: "🇪🇬", kickoff: "2026-06-16T00:30" },
-  { teamA: "Saudi Arabia", teamAFlag: "🇸🇦", teamB: "Uruguay", teamBFlag: "🇺🇾", kickoff: "2026-06-16T03:30" },
-  { teamA: "Iran", teamAFlag: "🇮🇷", teamB: "New Zealand", teamBFlag: "🇳🇿", kickoff: "2026-06-16T06:30" },
-  { teamA: "France", teamAFlag: "🇫🇷", teamB: "Senegal", teamBFlag: "🇸🇳", kickoff: "2026-06-17T00:30" },
-  { teamA: "Iraq", teamAFlag: "🇮🇶", teamB: "Norway", teamBFlag: "🇳🇴", kickoff: "2026-06-17T03:30" },
-  { teamA: "Argentina", teamAFlag: "🇦🇷", teamB: "Algeria", teamBFlag: "🇩🇿", kickoff: "2026-06-17T06:30" },
-  { teamA: "Austria", teamAFlag: "🇦🇹", teamB: "Jordan", teamBFlag: "🇯🇴", kickoff: "2026-06-17T09:30" },
-  { teamA: "Portugal", teamAFlag: "🇵🇹", teamB: "DRC", teamBFlag: "🇨🇩", kickoff: "2026-06-17T22:30" },
-  { teamA: "England", teamAFlag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", teamB: "Croatia", teamBFlag: "🇭🇷", kickoff: "2026-06-18T01:30" },
-  { teamA: "Ghana", teamAFlag: "🇬🇭", teamB: "Panama", teamBFlag: "🇵🇦", kickoff: "2026-06-18T04:30" },
-  { teamA: "Uzbekistan", teamAFlag: "🇺🇿", teamB: "Colombia", teamBFlag: "🇨🇴", kickoff: "2026-06-18T06:30" }
+  { teamA: "Spain", teamAFlag: "🇪🇸", teamB: "Saudi Arabia", teamBFlag: "🇸🇦", kickoff: "2026-06-21T21:30" },
+  { teamA: "Belgium", teamAFlag: "🇧🇪", teamB: "Iran", teamBFlag: "🇮🇷", kickoff: "2026-06-22T03:30" },
+  { teamA: "Uruguay", teamAFlag: "🇺🇾", teamB: "Cabo Verde", teamBFlag: "🇨🇻", kickoff: "2026-06-22T03:30" },
+  { teamA: "New Zealand", teamAFlag: "🇳🇿", teamB: "Egypt", teamBFlag: "🇪🇬", kickoff: "2026-06-22T09:30" },
+  { teamA: "Argentina", teamAFlag: "🇦🇷", teamB: "Austria", teamBFlag: "🇦🇹", kickoff: "2026-06-22T23:30" },
+  { teamA: "France", teamAFlag: "🇫🇷", teamB: "Iraq", teamBFlag: "🇮🇶", kickoff: "2026-06-23T02:30" },
+  { teamA: "Norway", teamAFlag: "🇳🇴", teamB: "Senegal", teamBFlag: "🇸🇳", kickoff: "2026-06-23T05:30" },
+  { teamA: "Jordan", teamAFlag: "🇯🇴", teamB: "Algeria", teamBFlag: "🇩🇿", kickoff: "2026-06-23T11:30" },
+  { teamA: "Portugal", teamAFlag: "🇵🇹", teamB: "Uzbekistan", teamBFlag: "🇺🇿", kickoff: "2026-06-23T23:30" },
+  { teamA: "England", teamAFlag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", teamB: "Ghana", teamBFlag: "🇬🇭", kickoff: "2026-06-24T01:30" },
+  { teamA: "Panama", teamAFlag: "🇵🇦", teamB: "Croatia", teamBFlag: "🇭🇷", kickoff: "2026-06-24T04:30" },
+  { teamA: "Colombia", teamAFlag: "🇨🇴", teamB: "Congo DR", teamBFlag: "🇨🇩", kickoff: "2026-06-24T09:30" }
 ];
 
 // DOM Sections
