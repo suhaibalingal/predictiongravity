@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
   
@@ -335,7 +335,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <!-- Admin logic module script -->
-  <script type="module" src="js/admin.js?v=2"></script>
+  <script type="module" src="js/admin.js?v=3"></script>
 
   <!-- UI Event Hooks mapping back to modules -->
   <script>
@@ -400,7 +400,7 @@
           teamAFlag: document.getElementById('cfg-team-a-flag').value.trim(),
           teamBFlag: document.getElementById('cfg-team-b-flag').value.trim(),
           kickoff: document.getElementById('cfg-kickoff').value,
-          openingTime: document.getElementById('cfg-opening').value,
+          openingTime: document.getElementById('cfg-opening') ? document.getElementById('cfg-opening').value : '',
           isNewMatch: document.getElementById('cfg-new-match').checked
         }
       }));

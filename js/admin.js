@@ -231,7 +231,9 @@ async function loadMatchConfig() {
       elTeamAFlagIndicator.textContent = activeMatch.teamAFlag || "🇦🇷";
       elTeamBFlagIndicator.textContent = activeMatch.teamBFlag || "🇫🇷";
       elKickoff.value = formatLocalDateTime(activeMatch.kickoff || activeMatch.deadline);
-      elOpening.value = activeMatch.openingTime ? formatLocalDateTime(activeMatch.openingTime) : "";
+      if (elOpening) {
+        elOpening.value = activeMatch.openingTime ? formatLocalDateTime(activeMatch.openingTime) : "";
+      }
       updateCalculatedDeadline();
 
       // Populate Result section names
