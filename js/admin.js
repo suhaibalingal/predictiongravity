@@ -139,13 +139,17 @@ window.addEventListener("admin-load-preset", (e) => {
 function updateCalculatedDeadline() {
   const kickoffVal = elKickoff.value;
   if (!kickoffVal) {
-    elDeadlineDisplay.textContent = "Select kickoff time to calculate...";
+    if (elDeadlineDisplay) {
+      elDeadlineDisplay.textContent = "Select kickoff time to calculate...";
+    }
     return;
   }
   const kickoffTime = new Date(kickoffVal).getTime();
   const deadlineTime = kickoffTime - 5 * 60 * 1000; // 5 minutes before
   const deadlineDate = new Date(deadlineTime);
-  elDeadlineDisplay.textContent = deadlineDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + " IST";
+  if (elDeadlineDisplay) {
+    elDeadlineDisplay.textContent = deadlineDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + " IST";
+  }
 }
 
 // Admin Authentication flow
