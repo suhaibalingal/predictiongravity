@@ -216,10 +216,23 @@
         </button>
       </div>
 
+      <!-- Match Selector for submissions & winners -->
+      <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; background: rgba(255,255,255,0.02); padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+        <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fa-solid fa-filter text-accent-cyan"></i> Select Match:
+        </span>
+        <div style="position: relative; flex: 1; max-width: 320px; min-width: 220px;">
+          <select class="form-input" id="admin-select-match" onchange="changeViewMatch()" style="width: 100%; padding: 0.5rem 2.5rem 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); color: #fff; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none;">
+            <option value="active">Active Match (Live)</option>
+          </select>
+          <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); font-size: 0.8rem;"><i class="fa-solid fa-chevron-down"></i></span>
+        </div>
+      </div>
+
       <!-- SUBMISSIONS TAB -->
       <div id="tab-submissions">
         <div class="admin-card-header" style="border: none; margin-bottom: 0; padding-bottom: 0;">
-          <h3 class="admin-card-title">Live Predictions</h3>
+          <h3 class="admin-card-title" id="submissions-title">Live Predictions</h3>
           <span class="badge-count" id="predictions-count">0 submissions</span>
         </div>
 
@@ -427,6 +440,11 @@
     window.filterPredictionsTable = () => {
       const query = document.getElementById('search-submissions').value.toLowerCase();
       window.dispatchEvent(new CustomEvent('admin-filter-submissions', { detail: query }));
+    };
+
+    window.changeViewMatch = () => {
+      const matchId = document.getElementById('admin-select-match').value;
+      window.dispatchEvent(new CustomEvent('admin-change-view-match', { detail: matchId }));
     };
   </script>
 </body>

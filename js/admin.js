@@ -76,6 +76,8 @@ let allPredictions = [];
 let filteredPredictions = [];
 let unsubscribeSubmissions = null;
 let currentMatchId = "";
+let allMatches = [];
+let viewMatch = null;
 
 // Initialize Page
 window.addEventListener("DOMContentLoaded", () => {
@@ -218,9 +220,66 @@ function formatLocalDateTime(dateStr) {
   return localISOTime;
 }
 
+const PAST_MATCHES = [
+  { matchId: "match_1782044999943", teamA: "Spain", teamAFlag: "🇪🇸", teamB: "Saudi Arabia", teamBFlag: "🇸🇦", kickoff: "2026-06-21T21:30", deadline: "2026-06-21T21:25:00.000Z", resultTeamA: 4, resultTeamB: 0, createdAt: "2026-06-21T12:29:59.943Z" },
+  { matchId: "match_1782133282927", teamA: "Argentina", teamAFlag: "🇦🇷", teamB: "Austria", teamBFlag: "🇦🇹", kickoff: "2026-06-22T23:30", deadline: "2026-06-22T23:25:00.000Z", resultTeamA: 2, resultTeamB: 0, createdAt: "2026-06-22T13:07:15.000Z" },
+  { matchId: "match_1782225102760", teamA: "Portugal", teamAFlag: "🇵🇹", teamB: "Uzbekistan", teamBFlag: "🇺🇿", kickoff: "2026-06-23T23:30", deadline: "2026-06-23T23:25:00.000Z", resultTeamA: null, resultTeamB: null, createdAt: "2026-06-23T14:33:39.000Z" },
+  { matchId: "match_1782313684874", teamA: "Brazil", teamAFlag: "🇧🇷", teamB: "Scotland", teamBFlag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", kickoff: "2026-06-25T03:30", deadline: "2026-06-24T21:55:00.000Z", resultTeamA: 3, resultTeamB: 0, createdAt: "2026-06-24T15:08:04.874Z" }
+];
+
+async function backfillMatches() {
+  for (const match of PAST_MATCHES) {
+    const docRef = doc(db, "matches", match.matchId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      await setDoc(docRef, match);
+    }
+  }
+}
+
+async function populateMatchesDropdown() {
+  const elMatchSelect = document.getElementById("admin-select-match");
+  if (!elMatchSelect) return;
+
+  try {
+    const matchesRef = collection(db, "matches");
+    const q = query(matchesRef, orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    allMatches = [];
+    snap.forEach(docSnap => {
+      allMatches.push(docSnap.data());
+    });
+
+    elMatchSelect.innerHTML = '<option value="active">Active Match (Live)</option>';
+
+    allMatches.forEach(m => {
+      const isCurrentlyActive = activeMatch && activeMatch.matchId === m.matchId;
+      const opt = document.createElement("option");
+      opt.value = m.matchId;
+      const statusStr = m.resultTeamA !== null && m.resultTeamB !== null ? `(${m.resultTeamA}-${m.resultTeamB})` : '(Pending)';
+      opt.textContent = `${m.teamAFlag} ${m.teamA} vs ${m.teamB} ${m.teamBFlag} ${statusStr}`;
+      if (isCurrentlyActive) {
+        opt.textContent += " [ACTIVE]";
+      }
+      elMatchSelect.appendChild(opt);
+    });
+
+    if (viewMatch) {
+      const isCurrentlyActive = activeMatch && viewMatch.matchId === activeMatch.matchId;
+      elMatchSelect.value = isCurrentlyActive ? "active" : viewMatch.matchId;
+    }
+  } catch (err) {
+    console.error("Error populating matches dropdown:", err);
+  }
+}
+
 // Fetch active match configs
 async function loadMatchConfig() {
   try {
+    // Run backfill in background
+    backfillMatches().catch(err => console.error("Backfill error:", err));
+
     const matchDocRef = doc(db, "settings", "match");
     const matchSnap = await getDoc(matchDocRef);
 
@@ -257,11 +316,28 @@ async function loadMatchConfig() {
 
       currentMatchId = activeMatch.matchId || 'active_match';
       
+      const elMatchSelect = document.getElementById("admin-select-match");
+      const selectedValue = elMatchSelect ? elMatchSelect.value : "active";
+      
+      if (selectedValue === "active") {
+        viewMatch = activeMatch;
+      } else {
+        const found = allMatches.find(m => m.matchId === selectedValue);
+        if (found) {
+          viewMatch = found;
+        } else {
+          viewMatch = activeMatch;
+        }
+      }
+
+      // Populate matches list dropdown
+      await populateMatchesDropdown();
+      
       // Update Prediction Status Display
       updatePredictionStatusDisplay();
       
-      // Listen to predictions real-time
-      listenToPredictions();
+      // Listen to predictions for the currently viewed match
+      listenToPredictions(viewMatch.matchId);
     }
   } catch (error) {
     console.error("Error loading match configuration:", error);
@@ -383,6 +459,10 @@ window.addEventListener("admin-save-match", async (e) => {
 
     await setDoc(matchDocRef, payload);
     
+    // Also save/update in the archived matches collection
+    const archiveDocRef = doc(db, "matches", matchId);
+    await setDoc(archiveDocRef, payload);
+    
     // Reset checkbox
     const chkNewMatch = document.getElementById('cfg-new-match');
     if (chkNewMatch) chkNewMatch.checked = false;
@@ -423,6 +503,10 @@ window.addEventListener("admin-save-results", async (e) => {
 
     await setDoc(matchDocRef, payload);
     
+    // Also update result in matches archive collection
+    const archiveDocRef = doc(db, "matches", activeMatch.matchId || 'active_match');
+    await setDoc(archiveDocRef, payload, { merge: true });
+    
     // Recalculate leaderboard points for all entries
     if (scoreA !== null && scoreB !== null) {
       await updateGlobalLeaderboard(activeMatch.matchId || 'active_match', scoreA, scoreB);
@@ -442,19 +526,20 @@ window.addEventListener("admin-save-results", async (e) => {
 });
 
 // Listen to predictions real-time
-function listenToPredictions() {
+function listenToPredictions(matchId) {
   if (unsubscribeSubmissions) {
     unsubscribeSubmissions();
   }
 
+  const queryMatchId = matchId || currentMatchId;
+
   const predsRef = collection(db, "predictions");
-  const q = query(predsRef, where("matchId", "==", currentMatchId));
+  const q = query(predsRef, where("matchId", "==", queryMatchId));
 
   unsubscribeSubmissions = onSnapshot(q, (snapshot) => {
     allPredictions = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
-      // Resolve Firestore Timestamp to normal JS Date
       let jsDate = new Date();
       if (data.timestamp) {
         jsDate = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
@@ -466,10 +551,18 @@ function listenToPredictions() {
       });
     });
 
-    // Sort predictions: newest submissions first for the general submissions list
     allPredictions.sort((a, b) => b.resolvedDate - a.resolvedDate);
     
-    filteredPredictions = [...allPredictions];
+    const searchVal = document.getElementById('search-submissions') ? document.getElementById('search-submissions').value.toLowerCase() : "";
+    if (!searchVal) {
+      filteredPredictions = [...allPredictions];
+    } else {
+      filteredPredictions = allPredictions.filter(
+        (pred) => 
+          pred.name.toLowerCase().includes(searchVal) || 
+          pred.phone.includes(searchVal)
+      );
+    }
     
     renderPredictionsTable();
     updateDashboardReports();
@@ -478,8 +571,31 @@ function listenToPredictions() {
   });
 }
 
+// Handle view match changes
+window.addEventListener("admin-change-view-match", (e) => {
+  const matchId = e.detail;
+  if (matchId === "active") {
+    viewMatch = activeMatch;
+  } else {
+    const found = allMatches.find(m => m.matchId === matchId);
+    if (found) {
+      viewMatch = found;
+    }
+  }
+  
+  if (viewMatch) {
+    listenToPredictions(viewMatch.matchId);
+  }
+});
+
 // Render student prediction table
 function renderPredictionsTable() {
+  const elTitle = document.getElementById("submissions-title");
+  if (elTitle) {
+    const isCurrentlyActive = viewMatch && activeMatch && viewMatch.matchId === activeMatch.matchId;
+    elTitle.textContent = isCurrentlyActive ? "Live Predictions" : "Past Match Predictions";
+  }
+
   elPredictionsCount.textContent = `${filteredPredictions.length} submissions`;
 
   if (filteredPredictions.length === 0) {
@@ -493,14 +609,17 @@ function renderPredictionsTable() {
 
   let html = "";
   filteredPredictions.forEach((pred) => {
-    const isCorrect = activeMatch && 
-                      activeMatch.resultTeamA !== null && 
-                      activeMatch.resultTeamB !== null && 
-                      pred.scoreA === activeMatch.resultTeamA && 
-                      pred.scoreB === activeMatch.resultTeamB;
+    const targetMatch = viewMatch || activeMatch;
+    const isCorrect = targetMatch && 
+                      targetMatch.resultTeamA !== null && 
+                      targetMatch.resultTeamA !== undefined &&
+                      targetMatch.resultTeamB !== null && 
+                      targetMatch.resultTeamB !== undefined &&
+                      pred.scoreA === targetMatch.resultTeamA && 
+                      pred.scoreB === targetMatch.resultTeamB;
 
     const timeStr = pred.resolvedDate.toLocaleString();
-    const cleanPred = `${activeMatch ? activeMatch.teamAFlag : ''} ${pred.scoreA} - ${pred.scoreB} ${activeMatch ? activeMatch.teamBFlag : ''}`;
+    const cleanPred = `${targetMatch ? targetMatch.teamAFlag : ''} ${pred.scoreA} - ${pred.scoreB} ${targetMatch ? targetMatch.teamBFlag : ''}`;
 
     html += `
       <tr>
@@ -532,11 +651,13 @@ window.addEventListener("admin-filter-submissions", (e) => {
 
 // Update the reports and compute winners list
 function updateDashboardReports() {
-  const hasResults = activeMatch && 
-                     activeMatch.resultTeamA !== null && 
-                     activeMatch.resultTeamA !== undefined && 
-                     activeMatch.resultTeamB !== null && 
-                     activeMatch.resultTeamB !== undefined;
+  const targetMatch = viewMatch || activeMatch;
+
+  const hasResults = targetMatch && 
+                     targetMatch.resultTeamA !== null && 
+                     targetMatch.resultTeamA !== undefined && 
+                     targetMatch.resultTeamB !== null && 
+                     targetMatch.resultTeamB !== undefined;
 
   if (!hasResults) {
     elWinnersPodium.style.display = "none";
@@ -547,15 +668,12 @@ function updateDashboardReports() {
     return;
   }
 
-  // Filter exact scoreline matches
   const winners = allPredictions.filter(
     (pred) => 
-      pred.scoreA === activeMatch.resultTeamA && 
-      pred.scoreB === activeMatch.resultTeamB
+      pred.scoreA === targetMatch.resultTeamA && 
+      pred.scoreB === targetMatch.resultTeamB
   );
 
-  // Crucial: Sort by submission timestamp (ascending) to award speed
-  // Treat missing resolvedDates (in transition) as future
   winners.sort((a, b) => a.resolvedDate - b.resolvedDate);
   
   elWinnersCount.textContent = `${winners.length} correct predictions`;
@@ -566,27 +684,24 @@ function updateDashboardReports() {
     elNoWinnersState.style.display = "block";
     elNoWinnersState.innerHTML = `
       <i class="fa-solid fa-face-frown" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--text-muted);"></i>
-      <br>No student predicted the exact correct score of <b>${activeMatch.resultTeamA} - ${activeMatch.resultTeamB}</b>.
+      <br>No student predicted the exact correct score of <b>${targetMatch.resultTeamA} - ${targetMatch.resultTeamB}</b>.
     `;
     return;
   }
 
   elNoWinnersState.style.display = "none";
   
-  // Render podium cards
   const p1 = winners[0];
   const p2 = winners[1];
   const p3 = winners[2];
-  const flagA = activeMatch.teamAFlag || "";
-  const flagB = activeMatch.teamBFlag || "";
-  const predStr = `${flagA} ${activeMatch.resultTeamA} - ${activeMatch.resultTeamB} ${flagB}`;
+  const flagA = targetMatch.teamAFlag || "";
+  const flagB = targetMatch.teamBFlag || "";
+  const predStr = `${flagA} ${targetMatch.resultTeamA} - ${targetMatch.resultTeamB} ${flagB}`;
 
-  // 1st place
   document.getElementById("podium-1-name").textContent = p1.name;
   document.getElementById("podium-1-pred").innerHTML = predStr;
   document.getElementById("podium-1-time").textContent = formatTimeDiff(p1.resolvedDate);
   
-  // 2nd place
   const elStep2 = document.querySelector(".podium-step-2");
   if (p2) {
     elStep2.style.visibility = "visible";
@@ -597,7 +712,6 @@ function updateDashboardReports() {
     elStep2.style.visibility = "hidden";
   }
 
-  // 3rd place
   const elStep3 = document.querySelector(".podium-step-3");
   if (p3) {
     elStep3.style.visibility = "visible";
@@ -610,7 +724,6 @@ function updateDashboardReports() {
 
   elWinnersPodium.style.display = "flex";
 
-  // Render full list table
   let winnersHtml = "";
   winners.forEach((winner, idx) => {
     const timeStr = winner.resolvedDate.toLocaleString();
