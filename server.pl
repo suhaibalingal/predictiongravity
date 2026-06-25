@@ -37,9 +37,12 @@ while (my $client = $socket->accept()) {
     my $request = <$client>;
     next unless $request;
     
-    # Parse request: GET /path HTTP/1.1
     if ($request =~ m|^GET /([^ ]*) HTTP/|) {
         my $file = $1;
+        
+        # Strip query string if present (e.g. ?v=4)
+        $file =~ s/\?.*$//;
+
         # Default file is index.html
         if ($file eq "" || $file eq "/") {
             $file = "index.html";
