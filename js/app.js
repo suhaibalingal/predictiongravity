@@ -169,6 +169,8 @@ async function loadActiveMatch() {
         }
       }
 
+      if (window.checkTieState) window.checkTieState();
+
       elLoading.style.display = "none";
       elActive.style.display = "block";
     }, (error) => {
@@ -266,6 +268,11 @@ function lockSubmissions(isOpeningSoon = false) {
   document.getElementById("student-name").disabled = true;
   document.getElementById("student-phone").disabled = true;
   btnSubmit.disabled = true;
+
+  const btnShootoutA = document.getElementById("shootout-team-a");
+  const btnShootoutB = document.getElementById("shootout-team-b");
+  if (btnShootoutA) btnShootoutA.disabled = true;
+  if (btnShootoutB) btnShootoutB.disabled = true;
 }
 
 // Enable all prediction controls
@@ -278,6 +285,11 @@ function unlockSubmissions() {
   document.getElementById("student-name").disabled = false;
   document.getElementById("student-phone").disabled = false;
   btnSubmit.disabled = false;
+
+  const btnShootoutA = document.getElementById("shootout-team-a");
+  const btnShootoutB = document.getElementById("shootout-team-b");
+  if (btnShootoutA) btnShootoutA.disabled = false;
+  if (btnShootoutB) btnShootoutB.disabled = false;
   
   elLockedBadge.style.display = "none";
   elOpeningBadge.style.display = "none";
