@@ -74,6 +74,21 @@
         </div>
       </div>
 
+      <!-- Shootout Selector (Knockout Stage) -->
+      <div id="shootout-container" style="display: none; margin: 1rem 0; padding: 1rem; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 14px; text-align: center; animation: fadeIn 0.4s ease;">
+        <div style="font-size: 0.85rem; font-weight: 600; color: var(--accent-gold); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <i class="fa-solid fa-circle-play"></i> Match Tied! Who advances?
+        </div>
+        <div style="display: flex; gap: 0.75rem; justify-content: center;">
+          <button type="button" class="form-input" id="shootout-team-a" onclick="selectShootoutWinner('teamA')" style="flex: 1; padding: 0.6rem; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 10px; color: #fff; cursor: pointer; transition: all 0.3s ease; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+            Team A
+          </button>
+          <button type="button" class="form-input" id="shootout-team-b" onclick="selectShootoutWinner('teamB')" style="flex: 1; padding: 0.6rem; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 10px; color: #fff; cursor: pointer; transition: all 0.3s ease; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+            Team B
+          </button>
+        </div>
+      </div>
+
       <!-- Timer Box -->
       <div class="timer-container">
         <div class="timer-label" id="timer-status">Submissions Close In</div>
@@ -235,22 +250,86 @@
   <!-- Helper scripts for inline click handlers to bridge module-scoped functions -->
   <script>
     // Bridge functions from ES module to window scope
+    let selectedQualifier = null; // "teamA" or "teamB"
+
     window.adjustScore = (team, offset) => {
       const el = document.getElementById(`team-${team.toLowerCase()}-display`);
       let val = parseInt(el.textContent) + offset;
       if (val < 0) val = 0;
       el.textContent = val;
+      checkTieState();
+    };
+
+    window.selectShootoutWinner = (team) => {
+      selectedQualifier = team;
+      const btnA = document.getElementById('shootout-team-a');
+      const btnB = document.getElementById('shootout-team-b');
+      if (team === 'teamA') {
+        btnA.style.borderColor = 'var(--accent-gold)';
+        btnA.style.background = 'rgba(245, 158, 11, 0.15)';
+        btnA.style.boxShadow = '0 0 10px rgba(245, 158, 11, 0.3)';
+        
+        btnB.style.borderColor = 'var(--glass-border)';
+        btnB.style.background = 'rgba(0,0,0,0.3)';
+        btnB.style.boxShadow = 'none';
+      } else {
+        btnB.style.borderColor = 'var(--accent-gold)';
+        btnB.style.background = 'rgba(245, 158, 11, 0.15)';
+        btnB.style.boxShadow = '0 0 10px rgba(245, 158, 11, 0.3)';
+        
+        btnA.style.borderColor = 'var(--glass-border)';
+        btnA.style.background = 'rgba(0,0,0,0.3)';
+        btnA.style.boxShadow = 'none';
+      }
+    };
+
+    window.checkTieState = () => {
+      const scoreA = parseInt(document.getElementById('team-a-display').textContent);
+      const scoreB = parseInt(document.getElementById('team-b-display').textContent);
+      const shootoutContainer = document.getElementById('shootout-container');
+      
+      if (shootoutContainer) {
+        if (scoreA === scoreB) {
+          shootoutContainer.style.display = 'block';
+        } else {
+          shootoutContainer.style.display = 'none';
+          selectedQualifier = null;
+          const btnA = document.getElementById('shootout-team-a');
+          const btnB = document.getElementById('shootout-team-b');
+          if (btnA && btnB) {
+            btnA.style.borderColor = 'var(--glass-border)';
+            btnA.style.background = 'rgba(0,0,0,0.3)';
+            btnA.style.boxShadow = 'none';
+            btnB.style.borderColor = 'var(--glass-border)';
+            btnB.style.background = 'rgba(0,0,0,0.3)';
+            btnB.style.boxShadow = 'none';
+          }
+        }
+      }
     };
     
     window.submitPrediction = (e) => {
       e.preventDefault();
+      const scoreA = parseInt(document.getElementById('team-a-display').textContent);
+      const scoreB = parseInt(document.getElementById('team-b-display').textContent);
+      
+      let qualifier = null;
+      if (scoreA > scoreB) {
+        qualifier = 'teamA';
+      } else if (scoreA < scoreB) {
+        qualifier = 'teamB';
+      } else {
+        qualifier = selectedQualifier;
+      }
+
       // Dispatch custom event to trigger app.js submit logic
       const submitEvent = new CustomEvent('app-submit-prediction', {
         detail: {
           name: document.getElementById('student-name').value.trim(),
           phone: document.getElementById('student-phone').value.trim(),
-          scoreA: parseInt(document.getElementById('team-a-display').textContent),
-          scoreB: parseInt(document.getElementById('team-b-display').textContent)
+          scoreA,
+          scoreB,
+          qualifier
         }
       });
       window.dispatchEvent(submitEvent);

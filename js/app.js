@@ -118,6 +118,14 @@ async function loadActiveMatch() {
       elTeamALogo.textContent = activeMatch.teamAFlag || "⚽";
       elTeamBLogo.textContent = activeMatch.teamBFlag || "⚽";
 
+      // Update shootout buttons
+      const btnShootoutA = document.getElementById("shootout-team-a");
+      const btnShootoutB = document.getElementById("shootout-team-b");
+      if (btnShootoutA && btnShootoutB) {
+        btnShootoutA.textContent = `${activeMatch.teamAFlag || "⚽"} ${activeMatch.teamA}`;
+        btnShootoutB.textContent = `${activeMatch.teamBFlag || "⚽"} ${activeMatch.teamB}`;
+      }
+
       // Display Kickoff Time in IST format
       if (activeMatch.kickoff) {
         const kickoffDate = new Date(activeMatch.kickoff);
@@ -281,7 +289,15 @@ function unlockSubmissions() {
 function showReceipt(data) {
   elReceiptName.textContent = data.name;
   elReceiptPhone.textContent = data.phone;
-  elReceiptPrediction.textContent = `${activeMatch.teamAFlag || ""} ${data.scoreA} - ${data.scoreB} ${activeMatch.teamBFlag || ""}`;
+  
+  let predText = `${activeMatch.teamAFlag || ""} ${data.scoreA} - ${data.scoreB} ${activeMatch.teamBFlag || ""}`;
+  if (data.scoreA === data.scoreB && data.qualifier) {
+    const isTeamA = data.qualifier === "teamA";
+    const qualName = isTeamA ? activeMatch.teamA : activeMatch.teamB;
+    const qualFlag = isTeamA ? (activeMatch.teamAFlag || "") : (activeMatch.teamBFlag || "");
+    predText += ` (${qualFlag} ${qualName} to qualify)`;
+  }
+  elReceiptPrediction.textContent = predText;
   
   const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : new Date().toLocaleString();
   elReceiptTime.textContent = dateStr;
@@ -292,7 +308,13 @@ function showReceipt(data) {
 
 // Custom Event Listeners to handle scoreboard submissions
 window.addEventListener("app-submit-prediction", async (e) => {
-  const { name, phone, scoreA, scoreB } = e.detail;
+  const { name, phone, scoreA, scoreB, qualifier } = e.detail;
+
+  // If score is a tie, validate shootout selection
+  if (scoreA === scoreB && !qualifier) {
+    showToast("Please choose which team will qualify on penalties!", "error");
+    return;
+  }
 
   // Basic validation: strip space/special chars from phone number
   const cleanPhone = phone.replace(/[^0-9+]/g, "");
@@ -335,6 +357,7 @@ window.addEventListener("app-submit-prediction", async (e) => {
       phone: cleanPhone,
       scoreA: scoreA,
       scoreB: scoreB,
+      qualifier: qualifier || null,
       matchId: currentMatchId,
       timestamp: serverTimestamp()
     };
@@ -348,6 +371,7 @@ window.addEventListener("app-submit-prediction", async (e) => {
       phone: cleanPhone,
       scoreA: scoreA,
       scoreB: scoreB,
+      qualifier: qualifier || null,
       timestamp: new Date().toISOString()
     };
 
@@ -402,6 +426,7 @@ window.addEventListener("app-reset-prediction", () => {
   // Reset score visual inputs
   elTeamADisplay.textContent = "0";
   elTeamBDisplay.textContent = "0";
+  if (window.checkTieState) window.checkTieState();
   
   // Clear inputs
   elForm.reset();
@@ -443,6 +468,7 @@ window.addEventListener("app-show-current-state", () => {
       } else {
         unlockSubmissions();
       }
+      if (window.checkTieState) window.checkTieState();
     }
     elActive.style.display = "block";
   }
@@ -526,11 +552,19 @@ window.addEventListener("app-load-winners", async () => {
     list.forEach((winner, idx) => {
       const dateStr = winner.resolvedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const badge = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`;
+      
+      let predText = `${activeMatch.teamAFlag} ${winner.scoreA} - ${winner.scoreB} ${activeMatch.teamBFlag}`;
+      if (winner.scoreA === winner.scoreB && winner.qualifier) {
+        const isA = winner.qualifier === "teamA";
+        const qFlag = isA ? activeMatch.teamAFlag : activeMatch.teamBFlag;
+        predText += ` (${qFlag} qualify)`;
+      }
+
       html += `
         <tr>
           <td style="text-align: center; font-weight: 700;">${badge}</td>
           <td class="name-cell">${escapeHtml(winner.name)}</td>
-          <td class="prediction-cell correct">${activeMatch.teamAFlag} ${winner.scoreA} - ${winner.scoreB} ${activeMatch.teamBFlag}</td>
+          <td class="prediction-cell correct">${predText}</td>
           <td class="time-cell">${dateStr}</td>
         </tr>
       `;

@@ -314,6 +314,29 @@ async function loadMatchConfig() {
         elResScoreB.value = "";
       }
 
+      // Update Results form shootout option labels
+      const optA = document.getElementById("res-shootout-opt-a");
+      const optB = document.getElementById("res-shootout-opt-b");
+      if (optA && optB) {
+        optA.textContent = `${activeMatch.teamAFlag || "⚽"} ${activeMatch.teamA}`;
+        optB.textContent = `${activeMatch.teamBFlag || "⚽"} ${activeMatch.teamB}`;
+      }
+
+      // Check result tie and set select value
+      const elResShootoutWinner = document.getElementById("res-shootout-winner");
+      const elResShootoutGroup = document.getElementById("res-shootout-group");
+      if (elResShootoutGroup && elResShootoutWinner) {
+        const scoreA = activeMatch.resultTeamA;
+        const scoreB = activeMatch.resultTeamB;
+        if (scoreA !== null && scoreB !== null && scoreA === scoreB) {
+          elResShootoutGroup.style.display = "block";
+          elResShootoutWinner.value = activeMatch.actualQualifier || "";
+        } else {
+          elResShootoutGroup.style.display = "none";
+          elResShootoutWinner.value = "";
+        }
+      }
+
       currentMatchId = activeMatch.matchId || 'active_match';
       
       const elMatchSelect = document.getElementById("admin-select-match");
@@ -482,10 +505,15 @@ window.addEventListener("admin-save-match", async (e) => {
 
 // Save match score results
 window.addEventListener("admin-save-results", async (e) => {
-  const { scoreA, scoreB } = e.detail;
+  const { scoreA, scoreB, actualQualifier } = e.detail;
 
   if (!activeMatch) {
     showToast("Configure and save the active match first.", "error");
+    return;
+  }
+
+  if (scoreA !== null && scoreB !== null && scoreA === scoreB && !actualQualifier) {
+    showToast("Please choose which team qualified via penalty shootout!", "error");
     return;
   }
 
@@ -498,7 +526,8 @@ window.addEventListener("admin-save-results", async (e) => {
     const payload = {
       ...activeMatch,
       resultTeamA: scoreA,
-      resultTeamB: scoreB
+      resultTeamB: scoreB,
+      actualQualifier: actualQualifier || null
     };
 
     await setDoc(matchDocRef, payload);
@@ -509,7 +538,7 @@ window.addEventListener("admin-save-results", async (e) => {
     
     // Recalculate leaderboard points for all entries
     if (scoreA !== null && scoreB !== null) {
-      await updateGlobalLeaderboard(activeMatch.matchId || 'active_match', scoreA, scoreB);
+      await updateGlobalLeaderboard(activeMatch.matchId || 'active_match', scoreA, scoreB, actualQualifier || null);
     }
     
     showToast("Match results updated and leaderboard recalculated!", "success");
@@ -618,8 +647,12 @@ function renderPredictionsTable() {
                       pred.scoreA === targetMatch.resultTeamA && 
                       pred.scoreB === targetMatch.resultTeamB;
 
-    const timeStr = pred.resolvedDate.toLocaleString();
-    const cleanPred = `${targetMatch ? targetMatch.teamAFlag : ''} ${pred.scoreA} - ${pred.scoreB} ${targetMatch ? targetMatch.teamBFlag : ''}`;
+    let cleanPred = `${targetMatch ? targetMatch.teamAFlag : ''} ${pred.scoreA} - ${pred.scoreB} ${targetMatch ? targetMatch.teamBFlag : ''}`;
+    if (pred.scoreA === pred.scoreB && pred.qualifier) {
+      const isA = pred.qualifier === "teamA";
+      const qFlag = isA ? (targetMatch ? targetMatch.teamAFlag : "") : (targetMatch ? targetMatch.teamBFlag : "");
+      cleanPred += ` (${qFlag} qualify)`;
+    }
 
     html += `
       <tr>
@@ -797,7 +830,7 @@ function triggerConfetti() {
 }
 
 // Calculate and update global leaderboard points in Firestore
-async function updateGlobalLeaderboard(matchId, scoreA, scoreB) {
+async function updateGlobalLeaderboard(matchId, scoreA, scoreB, actualQualifier) {
   const predsRef = collection(db, "predictions");
   const q = query(predsRef, where("matchId", "==", matchId));
   const snap = await getDocs(q);
@@ -810,10 +843,36 @@ async function updateGlobalLeaderboard(matchId, scoreA, scoreB) {
     let points = 0;
     if (pred.scoreA === scoreA && pred.scoreB === scoreB) {
       points = 3; // Exact Score prediction
-    } else if ((pred.scoreA > pred.scoreB && scoreA > scoreB) ||
-               (pred.scoreA < pred.scoreB && scoreA < scoreB) ||
-               (pred.scoreA === pred.scoreB && scoreA === scoreB)) {
-      points = 1; // Correct Outcome prediction
+    } else {
+      // Determine predicted winner/qualifier
+      let predQualifier = null;
+      if (pred.scoreA > pred.scoreB) {
+        predQualifier = 'teamA';
+      } else if (pred.scoreA < pred.scoreB) {
+        predQualifier = 'teamB';
+      } else {
+        predQualifier = pred.qualifier;
+      }
+      
+      // Determine actual winner/qualifier
+      let matchQualifier = actualQualifier;
+      if (!matchQualifier) {
+        if (scoreA > scoreB) {
+          matchQualifier = 'teamA';
+        } else if (scoreA < scoreB) {
+          matchQualifier = 'teamB';
+        }
+      }
+      
+      if (matchQualifier) {
+        if (predQualifier === matchQualifier) {
+          points = 1; // Correct Outcome (advancing team)
+        }
+      } else {
+        if (pred.scoreA === pred.scoreB) {
+          points = 1; // Correct Outcome (group stage draw)
+        }
+      }
     }
     
     // Read existing leaderboard entry

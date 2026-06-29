@@ -187,12 +187,27 @@
         <div class="match-container" style="margin: 0.5rem 0 1.5rem 0;">
           <div class="team-container" style="flex: 1.2;">
             <div class="team-name" id="res-team-a-label" style="min-height: auto; margin-bottom: 0.5rem; text-align: center;">Team A</div>
-            <input class="form-input text-center" style="padding-left: 1rem; font-size: 1.5rem; font-weight: bold;" type="number" id="res-score-a" min="0" placeholder="Score">
+            <input class="form-input text-center" style="padding-left: 1rem; font-size: 1.5rem; font-weight: bold;" type="number" id="res-score-a" min="0" placeholder="Score" oninput="checkAdminResultTie()">
           </div>
           <div class="vs-divider" style="padding-top: 1.5rem;">:</div>
           <div class="team-container" style="flex: 1.2;">
             <div class="team-name" id="res-team-b-label" style="min-height: auto; margin-bottom: 0.5rem; text-align: center;">Team B</div>
-            <input class="form-input text-center" style="padding-left: 1rem; font-size: 1.5rem; font-weight: bold;" type="number" id="res-score-b" min="0" placeholder="Score">
+            <input class="form-input text-center" style="padding-left: 1rem; font-size: 1.5rem; font-weight: bold;" type="number" id="res-score-b" min="0" placeholder="Score" oninput="checkAdminResultTie()">
+          </div>
+        </div>
+
+        <!-- Shootout Winner (Only shown for draws in knockout) -->
+        <div id="res-shootout-group" style="display: none; margin-bottom: 1.5rem;">
+          <label class="form-label" for="res-shootout-winner">
+            <i class="fa-solid fa-circle-play text-accent-gold"></i> Shootout Winner / Advancing Team
+          </label>
+          <div class="input-wrapper">
+            <span class="input-icon"><i class="fa-solid fa-trophy"></i></span>
+            <select class="form-input" id="res-shootout-winner" style="padding-left: 2.75rem; cursor: pointer; background: rgba(0,0,0,0.45); border: 1px solid var(--glass-border); color: #fff;">
+              <option value="">-- Choose advancing team --</option>
+              <option value="teamA" id="res-shootout-opt-a">Team A</option>
+              <option value="teamB" id="res-shootout-opt-b">Team B</option>
+            </select>
           </div>
         </div>
 
@@ -429,12 +444,42 @@
 
     window.saveMatchResults = (e) => {
       e.preventDefault();
+      const scoreA = document.getElementById('res-score-a').value !== '' ? parseInt(document.getElementById('res-score-a').value) : null;
+      const scoreB = document.getElementById('res-score-b').value !== '' ? parseInt(document.getElementById('res-score-b').value) : null;
+      
+      let actualQualifier = null;
+      if (scoreA !== null && scoreB !== null) {
+        if (scoreA > scoreB) {
+          actualQualifier = 'teamA';
+        } else if (scoreA < scoreB) {
+          actualQualifier = 'teamB';
+        } else {
+          actualQualifier = document.getElementById('res-shootout-winner').value;
+        }
+      }
+
       window.dispatchEvent(new CustomEvent('admin-save-results', {
         detail: {
-          scoreA: document.getElementById('res-score-a').value !== '' ? parseInt(document.getElementById('res-score-a').value) : null,
-          scoreB: document.getElementById('res-score-b').value !== '' ? parseInt(document.getElementById('res-score-b').value) : null
+          scoreA,
+          scoreB,
+          actualQualifier
         }
       }));
+    };
+
+    window.checkAdminResultTie = () => {
+      const scoreA = document.getElementById('res-score-a').value;
+      const scoreB = document.getElementById('res-score-b').value;
+      const shootoutGroup = document.getElementById('res-shootout-group');
+      
+      if (shootoutGroup) {
+        if (scoreA !== '' && scoreB !== '' && parseInt(scoreA) === parseInt(scoreB)) {
+          shootoutGroup.style.display = 'block';
+        } else {
+          shootoutGroup.style.display = 'none';
+          document.getElementById('res-shootout-winner').value = '';
+        }
+      }
     };
 
     window.filterPredictionsTable = () => {
