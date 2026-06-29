@@ -307,7 +307,7 @@ function showReceipt(data) {
     const isTeamA = data.qualifier === "teamA";
     const qualName = isTeamA ? activeMatch.teamA : activeMatch.teamB;
     const qualFlag = isTeamA ? (activeMatch.teamAFlag || "") : (activeMatch.teamBFlag || "");
-    predText += ` (${qualFlag} ${qualName} to qualify)`;
+    predText += ` (${qualFlag} ${qualName} wins penalties)`;
   }
   elReceiptPrediction.textContent = predText;
   
@@ -569,7 +569,7 @@ window.addEventListener("app-load-winners", async () => {
       if (winner.scoreA === winner.scoreB && winner.qualifier) {
         const isA = winner.qualifier === "teamA";
         const qFlag = isA ? activeMatch.teamAFlag : activeMatch.teamBFlag;
-        predText += ` (${qFlag} qualify)`;
+        predText += ` (${qFlag} wins penalties)`;
       }
 
       html += `

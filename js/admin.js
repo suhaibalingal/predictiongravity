@@ -651,7 +651,7 @@ function renderPredictionsTable() {
     if (pred.scoreA === pred.scoreB && pred.qualifier) {
       const isA = pred.qualifier === "teamA";
       const qFlag = isA ? (targetMatch ? targetMatch.teamAFlag : "") : (targetMatch ? targetMatch.teamBFlag : "");
-      cleanPred += ` (${qFlag} qualify)`;
+      cleanPred += ` (${qFlag} wins penalties)`;
     }
 
     html += `
